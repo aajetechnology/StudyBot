@@ -1,0 +1,25 @@
+# --- Core Web Framework ---
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-Migrate==4.0.5
+Werkzeug==3.0.1
+python-dotenv==1.0.0
+
+# --- AI & API Clients ---
+groq==0.4.2
+openai==1.12.0
+
+# --- Document & Audio Processing ---
+pdfplumber==0.10.3
+python-docx==1.1.0
+pydub==0.25.1
+# Note: pydub requires 'ffmpeg' installed on your OS
+
+# --- Production Server ---
+gunicorn==21.2.0
+
+# --- Utilities ---
+requests==2.31.0
+itsdangerous==2.1.2
+Jinja2==3.1.2

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-9">
+            
+            <div class="progress mb-3" style="height: 8px;">
+                <div id="exam-progress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm">
+                <div>
+                    <h5 class="fw-bold mb-0 text-truncate" style="max-width: 250px;">{{ lecture.title }}</h5>
+                    <small class="text-muted">Question <span id="current-idx">1</span> of {{ count }}</small>
+                </div>
+                <div class="text-end">
+                    <div class="h4 fw-bold text-danger mb-0" id="timer">00:00</div>
+                    <small class="text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Time Remaining</small>
+                </div>
+            </div>
+
+            <form id="quizForm" action="{{ url_for('quiz.submit_quiz') }}" method="POST">
+                <input type="hidden" name="lecture_id" value="{{ lecture.id }}">
+                
+                {% for item in quiz %}
+    {% set q_idx = loop.index0 %}
+    
+    <div class="question-card shadow-sm p-4 bg-white rounded-4 mb-4" id="q-{{ q_idx }}" style="{% if not loop.first %}display:none;{% endif %}">
+        <h5 class="mb-4 fw-bold">{{ q_idx + 1 }}. {{ item.q }}</h5>
+        
+        {% if item.type == 'objective' %}
+            {% for opt in item.options %}
+            <div class="form-check mb-3 p-3 border rounded-3 hover-shadow">
+                <input class="form-check-input" 
+                       type="radio" 
+                       name="ans-{{ q_idx }}" 
+                       id="opt-{{ loop.index0 }}-{{ q_idx }}" 
+                       value="{{ opt }}">
+                <label class="form-check-label w-100" for="opt-{{ loop.index0 }}-{{ q_idx }}">
+                    {{ opt }}
+                </label>
+            </div>
+            {% endfor %}
+        {% else %}
+            <textarea name="ans-{{ q_idx }}" class="form-control" rows="4" placeholder="Type your answer here..."></textarea>
+        {% endif %}
+    </div>
+{% endfor %}
+
+                <div class="d-flex justify-content-between mt-4 pb-5">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill shadow-sm" id="prevBtn" onclick="changeQ(-1)" disabled>
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </button>
+                    <button type="button" class="btn btn-primary px-4 rounded-pill shadow-sm" id="nextBtn" onclick="changeQ(1)">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </button>
+                    <button type="submit" class="btn btn-success px-5 rounded-pill shadow-sm d-none" id="submitBtn">
+                        Submit Examination <i class="bi bi-check-all"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    let currentQ = 0;
+    const totalQ = {{ count }};
+    let timeLeft = {{ timer }};
+
+    function updateProgress() {
+        const percent = ((currentQ + 1) / totalQ) * 100;
+        document.getElementById('exam-progress').style.width = percent + '%';
+    }
+
+    function changeQ(step) {
+        document.getElementById(`q-${currentQ}`).style.display = 'none';
+        currentQ += step;
+        document.getElementById(`q-${currentQ}`).style.display = 'block';
+        
+        document.getElementById('current-idx').innerText = currentQ + 1;
+        document.getElementById('prevBtn').disabled = (currentQ === 0);
+        
+        updateProgress();
+
+        if (currentQ === totalQ - 1) {
+            document.getElementById('nextBtn').classList.add('d-none');
+            document.getElementById('submitBtn').classList.remove('d-none');
+        } else {
+            document.getElementById('nextBtn').classList.remove('d-none');
+            document.getElementById('submitBtn').classList.add('d-none');
+        }
+    }
+
+    // Initialize progress
+    updateProgress();
+
+    // Timer Logic
+    const timerDisplay = document.getElementById('timer');
+    const countdown = setInterval(() => {
+        let mins = Math.floor(timeLeft / 60);
+        let secs = timeLeft % 60;
+        timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        
+        if (timeLeft <= 60) {
+            timerDisplay.classList.add('text-danger');
+            timerDisplay.style.animation = "pulse 1s infinite";
+        }
+        
+        if (timeLeft <= 0) {
+            clearInterval(countdown);
+            alert("Time is up! Your exam will be submitted automatically.");
+            document.getElementById('quizForm').submit();
+        }
+        timeLeft--;
+    }, 1000);
+</script>
+
+<style>
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    .hover-shadow:hover {
+        background-color: #f8f9ff;
+        border-color: #0d6efd !important;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

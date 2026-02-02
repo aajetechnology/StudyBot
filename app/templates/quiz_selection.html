@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold mb-4 text-center">Preparation Portal</h2>
+            <div class="card border-0 shadow-lg p-4 rounded-4">
+                
+                <div class="btn-group w-100 mb-4 p-1 bg-light rounded-pill" role="group">
+                    <input type="radio" class="btn-check" name="source_type" id="use_existing" checked onclick="toggleSource('existing')">
+                    <label class="btn btn-outline-primary rounded-pill border-0" for="use_existing">📂 From My Library</label>
+
+                    <input type="radio" class="btn-check" name="source_type" id="use_upload" onclick="toggleSource('upload')">
+                    <label class="btn btn-outline-primary rounded-pill border-0" for="use_upload">📤 New Upload</label>
+                </div>
+
+                <form action="{{ url_for('quiz.start_quiz') }}" method="POST" enctype="multipart/form-data">
+                    
+                    <div id="existing_section" class="mb-4">
+                        <label class="form-label fw-bold text-primary">Select Material</label>
+                        <select name="lecture_id" id="lecture_select" class="form-select border-0 bg-light py-2">
+                            <option value="" disabled selected>Choose a previous lecture...</option>
+                            {% for lecture in lectures %}
+                            <option value="{{ lecture.id }}">{{ lecture.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div id="upload_section" class="mb-4 d-none">
+                        <label class="form-label fw-bold text-primary">Upload Document (PDF, DOCX, TXT)</label>
+                        <input type="file" name="doc_file" id="file_input" class="form-control border-0 bg-light py-2" accept=".pdf,.docx,.txt" disabled>
+                        <small class="text-muted">Maximum file size: 10MB</small>
+                    </div>
+
+                    <hr class="my-4 opacity-25">
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Number of Questions</label>
+                        <div class="d-flex justify-content-between gap-2">
+                            {% for count in [10, 20, 30, 40, 50] %}
+                            <input type="radio" class="btn-check" name="count" id="btn{{count}}" value="{{count}}" {% if count == 10 %}checked{% endif %}>
+                            <label class="btn btn-outline-dark flex-fill" for="btn{{count}}">{{count}}</label>
+                            {% endfor %}
+                        </div>
+                        <div class="alert alert-info mt-3 border-0 py-2 small">
+                            <i class="bi bi-clock me-2"></i>90s (Theory) or 180s (Calculations) per question.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow">
+                         Start Examination
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+function toggleSource(type) {
+    const existingSec = document.getElementById('existing_section');
+    const uploadSec = document.getElementById('upload_section');
+    const lectureSelect = document.getElementById('lecture_select');
+    const fileInput = document.getElementById('file_input');
+
+    if (type === 'existing') {
+        existingSec.classList.remove('d-none');
+        uploadSec.classList.add('d-none');
+        
+        // Enable select, Disable file input
+        lectureSelect.disabled = false;
+        fileInput.disabled = true;
+    } else {
+        existingSec.classList.add('d-none');
+        uploadSec.classList.remove('d-none');
+        
+        // Disable select, Enable file input
+        lectureSelect.disabled = true;
+        fileInput.disabled = false;
+    }
+}
+</script>
+{% endblock %}

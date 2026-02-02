@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4">
+            <div class="card-body p-5">
+                <h2 class="fw-bold mb-4">Examination Finished!</h2>
+                
+                <div class="position-relative d-inline-block mb-4">
+                    <h1 class="display-1 fw-bold text-primary">{{ (quiz.score / quiz.total_questions * 100)|int }}%</h1>
+                    <p class="text-muted">Score: {{ quiz.score }} / {{ quiz.total_questions }}</p>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <h4 class="mb-0 text-success">{{ quiz.score }}</h4>
+                            <small>Correct</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <h4 class="mb-0 text-danger">{{ quiz.total_questions - quiz.score }}</h4>
+                            <small>Incorrect</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 rounded-4 text-start">
+            <div class="card-body p-4">
+                <h5 class="fw-bold text-primary border-bottom pb-2 mb-3">
+                    <i class="bi bi-lightbulb-fill me-2"></i>StudAI Tutor Advice
+                </h5>
+                <div class="text-muted" style="line-height: 1.8;">
+                    {{ quiz.feedback | replace('\n', '<br>') | safe }}
+                </div>
+                
+                <div class="mt-4 d-grid gap-2">
+                    <a href="{{ url_for('quiz.quiz_selection') }}" class="btn btn-primary rounded-pill py-2">Retake Another Quiz</a>
+                    <a href="{{ url_for('processor.dashboard') }}" class="btn btn-outline-secondary rounded-pill">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

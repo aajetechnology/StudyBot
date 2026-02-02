@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <div class="row g-3 mb-5">
+        <div class="col-6 col-md-3">
+            <a href="{{ url_for('quiz.quiz_selection') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-all hover-lift">
+                <div class="card-body text-center p-4">
+                    <div class="bg-warning bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
+                        <i class="bi bi-pencil-square text-warning fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1">CBT Quiz</h6>
+                    <small class="text-muted">Test yourself</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="/library" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-all hover-lift">
+                <div class="card-body text-center p-4">
+                    <div class="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
+                        <i class="bi bi-folder-fill text-info fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1">Library</h6>
+                    <small class="text-muted">All documents</small>
+                </div>
+            </a>
+        </div>
+        </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-5">
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                <div class="card-header border-0 bg-white pt-4 px-4 text-center">
+                    <div class="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-2">
+                        <i class="bi bi-mic-fill text-primary fs-4"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0">Study Guide Generator</h5>
+                    <p class="small text-muted">Convert Audio or PDF into structured notes</p>
+                </div>
+                <div class="card-body p-4">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">STUDY TITLE</label>
+                            <input type="text" name="custom_title" id="customTitle" 
+                                   class="form-control form-control-lg border-2 bg-light-subtle rounded-3" 
+                                   placeholder="e.g. GST 101 Lecture">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">UPLOAD AUDIO/DOC</label>
+                            <div class="upload-area p-4 border-dashed rounded-4 text-center bg-light transition-all" id="drop-zone">
+                                <i class="bi bi-cloud-arrow-up fs-1 text-primary"></i>
+                                <p class="mb-2 mt-2 fw-medium">Click to select <span class="text-primary">File</span></p>
+                                <small class="text-muted">MP3</small>
+                                <input type="file" name="lecture_file" id="lectureFile" class="d-none" accept=".mp3,.wav,.m4a,.pdf,.docx,.txt" required>
+                                <div id="file-chosen" class="mt-2 fw-bold text-success d-none"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-secondary">EXPORT AS</label>
+                            <div class="d-flex gap-2">
+                                <input type="radio" class="btn-check" name="export_format" id="fmt_pdf" value="pdf" checked>
+                                <label class="btn btn-outline-secondary w-50 py-2 rounded-3" for="fmt_pdf">PDF</label>
+                                
+                                <input type="radio" class="btn-check" name="export_format" id="fmt_docx" value="docx">
+                                <label class="btn btn-outline-secondary w-50 py-2 rounded-3" for="fmt_docx">Word</label>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm py-3 rounded-pill">
+                            ✨ Start AI Processing
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="log-container" class="d-none animate-slide-up">
+                <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="card-header bg-dark py-3">
+                        <span class="text-white-50 font-monospace small">>> SYSTEM_CORE_LOG</span>
+                    </div>
+                    <div id="terminal-body" class="card-body font-monospace text-success overflow-auto p-4" style="height: 250px; background: #0d1117; font-size: 0.8rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4 text-dark">Recent Study Guides</h5>
+                    {% if lectures %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <tbody>
+                                {% for lecture in lectures %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ lecture.title }}</div>
+                                        <small class="text-muted">{{ lecture.timestamp.strftime('%d %b') }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('processor.download_lecture', lecture_id=lecture.id) }}" class="btn btn-light btn-sm rounded-pill shadow-sm">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center text-muted py-5">No files processed yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<style>
+    .border-dashed { border: 2px dashed #dee2e6 !important; transition: all 0.3s; }
+    .upload-area:hover { border-color: #6366f1 !important; cursor: pointer; background: #f8f9ff !important; }
+    .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .animate-slide-up { animation: slideUp 0.5s ease-out; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .transition-all { transition: all 0.3s ease; }
+    #terminal-body::-webkit-scrollbar { width: 6px; }
+    #terminal-body::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+</style>
+
+<script>
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('lectureFile');
+    const dropZone = document.getElementById('drop-zone');
+    const fileChosen = document.getElementById('file-chosen');
+    const terminal = document.getElementById('terminal-body');
+    const logContainer = document.getElementById('log-container');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Handle Drop Zone Clicking
+    dropZone.onclick = () => fileInput.click();
+
+    // Show filename when chosen
+    fileInput.onchange = () => {
+        if (fileInput.files.length > 0) {
+            fileChosen.innerHTML = `<i class="bi bi-file-earmark-check me-1"></i> ${fileInput.files[0].name}`;
+            fileChosen.classList.remove('d-none');
+        }
+    };
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const customTitleInput = document.getElementById('customTitle').value;
+        const exportFormat = document.querySelector('input[name="export_format"]:checked').value;
+
+        // Validation
+        if (!fileInput.files[0]) {
+            alert("Please select a file first.");
+            return;
+        }
+
+        const finalTitle = customTitleInput || fileInput.files[0].name;
+
+        // UI Prep
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+        
+        try {
+            const response = await fetch("{{ url_for('processor.upload_lecture') }}", {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                
+                // Show terminal and update button
+                logContainer.classList.remove('d-none');
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>AI Processing...';
+                
+                // Start SSE Stream
+                const streamUrl = `/process-log/${encodeURIComponent(result.filename)}?title=${encodeURIComponent(finalTitle)}&format=${exportFormat}`;
+                const eventSource = new EventSource(streamUrl);
+
+                eventSource.onmessage = function(e) {
+                    const data = JSON.parse(e.data);
+                    const newLine = document.createElement('div');
+                    
+                    newLine.className = `mb-1 ${data.class}`;
+                    newLine.innerHTML = `<span class="text-secondary opacity-50">>></span> ${data.msg}`;
+
+                    terminal.appendChild(newLine);
+                    terminal.scrollTop = terminal.scrollHeight;
+
+                    if (data.msg.includes('COMPLETE')) {
+                        eventSource.close();
+                        submitBtn.innerHTML = '✅ Generation Finished!';
+                        submitBtn.classList.replace('btn-primary', 'btn-success');
+                        setTimeout(() => { window.location.reload(); }, 2000);
+                    }
+                };
+
+                eventSource.onerror = function() {
+                    eventSource.close();
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '✨ Generate Study Guide';
+                    const errLine = document.createElement('div');
+                    errLine.className = 'text-danger fw-bold';
+                    errLine.innerHTML = '>> [FATAL]: Stream interrupted.';
+                    terminal.appendChild(errLine);
+                };
+            } else {
+                const errorData = await response.json();
+                alert("Error: " + errorData.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '✨ Generate Study Guide';
+            }
+        } catch (err) {
+            console.error(err);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '✨ Generate Study Guide';
+        }
+    };
+</script>
+{% endblock %}
