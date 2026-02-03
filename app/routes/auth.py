@@ -41,7 +41,7 @@ def login():
         
         if user and bcrypt.check_password_hash(user.password, password):
             login_user(user)
-            return redirect(url_for('processor.upload_lecture'))
+            return redirect(url_for('processor.dashboard'))
         else:
             flash('Login Unsuccessful. Check email and password', 'danger')
             
