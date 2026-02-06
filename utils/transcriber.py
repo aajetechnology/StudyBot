@@ -1,3 +1,10 @@
+try:
+    import audioop
+except ImportError:
+    import audioop_copy as audioop
+    import sys
+    sys.modules['audioop'] = audioop
+
 import os
 import gc
 import threading
