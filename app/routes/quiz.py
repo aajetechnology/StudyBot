@@ -1,18 +1,23 @@
 import os
 import json
+import base64
+import io
 import pdfplumber
+from pypdf import PdfReader
 from docx import Document
-from datetime import datetime, timezone # Use timezone-aware dates
-from flask import Blueprint, render_template, request, redirect, url_for, current_app, flash, session
+from datetime import datetime, timezone
+from flask import Blueprint, render_template, request, redirect, url_for, current_app, flash, session, jsonify
 from flask_login import login_required, current_user
-from werkzeug.utils import secure_filename
+from rapidfuzz import fuzz
+from groq import Groq
 
 from app.models import db, Lecture, Quiz  
-# FIXED: Import the assistant class instance from the app package
 from utils.summarizer import ai_assistant
-from rapidfuzz import fuzz
 
 quiz_bp = Blueprint('quiz', __name__)
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+# --- HELPER FUNCTIONS ---
 
 def extract_text_from_file(filepath):
     """Securely extract text from various file formats."""
@@ -37,6 +42,8 @@ def extract_text_from_file(filepath):
         current_app.logger.error(f"File extraction error: {str(e)}")
         return ""
 
+# --- ROUTES ---
+
 @quiz_bp.route('/quiz-selection')
 @login_required
 def quiz_selection():
@@ -46,37 +53,71 @@ def quiz_selection():
 @quiz_bp.route('/start-quiz', methods=['POST'])
 @login_required
 def start_quiz():
-    num_questions = int(request.form.get('count', 10))
+    files = request.files.getlist('doc_file')
+    
+    if not files or files[0].filename == '':
+        flash("Please upload at least one PDF or photo of your notes!", "warning")
+        return redirect(request.url)
 
-    if 'doc_file' in request.files and request.files['doc_file'].filename != "":
-        file = request.files['doc_file']
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-
-        extracted_text = extract_text_from_file(filepath)
-        if len(extracted_text.strip()) < 50:
-            flash("The document is too short or empty for a quiz!", 'danger')
-            return redirect(url_for('quiz.quiz_selection'))
+    combined_text = ""
+    for file in files:
+        filename = file.filename.lower()
         
-        # FIXED: Use timezone-aware UTC
-        new_lecture = Lecture(
-            title=filename,
-            transcript=extracted_text,
-            summary="Direct Quiz Upload",
-            timestamp=datetime.now(timezone.utc), 
-            user_id=current_user.id
-        )
+        # --- PDF EXTRACTION ---
+        if filename.endswith('.pdf'):
+            reader = PdfReader(file)
+            page_text = ""
+            for page in reader.pages:
+                page_text += page.extract_text() or ""
+            
+            if len(page_text.strip()) < 50:
+                combined_text += "[Scanned PDF detected - AI will summarize context]\n"
+            else:
+                combined_text += page_text + "\n"
+        
+        # --- IMAGE/PHOTO EXTRACTION ---
+        elif filename.endswith(('.png', '.jpg', '.jpeg')):
+            image_bytes = file.read()
+            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+            try:
+                vision_completion = client.chat.completions.create(
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Extract all academic text from this image perfectly so I can teach a student from it."},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
+                        ]
+                    }],
+                    model="llama-3.2-11b-vision-preview",
+                )
+                combined_text += vision_completion.choices[0].message.content + "\n"
+            except Exception as e:
+                current_app.logger.error(f"Vision Error: {e}")
+
+    # Safety Check: Did we get anything?
+    if len(combined_text.strip()) < 20:
+        flash("The AI couldn't read the notes. Please ensure the photos are clear!", "danger")
+        return redirect(url_for('quiz.quiz_selection'))
+
+    # FIXED: Using 'transcript' instead of 'content' to match your Model
+    new_lecture = Lecture(
+        title=files[0].filename[:50],
+        transcript=combined_text,  # <--- This matches your SQLAlchemy column
+        user_id=current_user.id,
+        timestamp=datetime.now(timezone.utc)
+    )
+    
+    try:
         db.session.add(new_lecture)
         db.session.commit()
-        lecture_id = new_lecture.id
-    else:
-        lecture_id = request.form.get('lecture_id')
-        if not lecture_id:
-            flash('Please select a document or upload a new one.', 'warning')
-            return redirect(url_for('quiz.quiz_selection'))
-    
-    return redirect(url_for('quiz.run_exam', lecture_id=lecture_id, count=num_questions))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Database Save Error: {e}")
+        flash("Failed to save lecture to database.", "danger")
+        return redirect(url_for('quiz.quiz_selection'))
+
+    return redirect(url_for('classroom.init_class', lecture_id=new_lecture.id))
+
 
 @quiz_bp.route('/run-exam/<int:lecture_id>/<int:count>')
 @login_required
@@ -86,9 +127,15 @@ def run_exam(lecture_id, count):
         flash("Lecture not found.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
 
-    # Calculate timer based on content type
-    math_keywords = ['=', '+', '/', '*', 'calculate', 'solve', 'formula', 'x', 'y', 'total']
-    is_calc = any(word in lecture.transcript.lower() for word in math_keywords)
+    # Use content if transcript is missing (for PDF/Photo uploads)
+    raw_text = lecture.transcript if lecture.transcript else lecture.content
+    if not raw_text:
+        flash("No content found to generate a quiz.", "warning")
+        return redirect(url_for('quiz.quiz_selection'))
+
+    # Determine timer duration
+    math_keywords = ['=', '+', '/', '*', 'calculate', 'solve', 'formula', 'x', 'y']
+    is_calc = any(word in raw_text.lower() for word in math_keywords)
     total_seconds = count * (180 if is_calc else 90)
 
     prompt = f"""
@@ -97,17 +144,15 @@ def run_exam(lecture_id, count):
     Return ONLY a valid JSON object.
     {{
         "questions": [
-            {{"id": 1, "type": "objective", "q": "Question text", "options": ["A", "B", "C", "D"], "ans": "A"}},
-            {{"id": 2, "type": "theory", "q": "Theory question", "keywords": ["key1", "key2"]}}
+            {{"id": 1, "type": "objective", "q": "Question text", "options": ["Choice1", "Choice2", "Choice3", "Choice4"], "ans": "Choice1"}},
+            {{"id": 2, "type": "theory", "q": "Theory question", "keywords": ["word1", "word2"]}}
         ]
     }}
-    CRITICAL: For 'objective' questions, the 'ans' field must contain the FULL TEXT of the correct option, not just 'A' or 'B'.
-    Example: {{"type": "objective", "q": "Color of sky?", "options": ["Blue", "Red"], "ans": "blue"}}
-    Text: {lecture.transcript[:6000]} 
+    CRITICAL: For 'objective' questions, 'ans' must be the FULL TEXT of the correct option.
+    Text: {raw_text[:6000]}
     """
 
     try:
-        # FIXED: Use the ai_assistant instance instead of raw client
         completion = ai_assistant.client.chat.completions.create(
             model=ai_assistant.model,
             messages=[{"role": "user", "content": prompt}],
@@ -116,16 +161,15 @@ def run_exam(lecture_id, count):
         quiz_data = json.loads(completion.choices[0].message.content)
         session['current_quiz'] = quiz_data['questions']
         
+        return render_template('cbt_exam.html', 
+                               quiz=quiz_data['questions'], 
+                               lecture=lecture,
+                               timer=total_seconds,
+                               count=count)
     except Exception as e:
         current_app.logger.error(f"Quiz AI error: {str(e)}")
-        flash("AI failed to generate quiz. Please try a different document.", "danger")
+        flash("AI failed to generate quiz. Please try again.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
-
-    return render_template('cbt_exam.html', 
-                           quiz=quiz_data['questions'], 
-                           lecture=lecture,
-                           timer=total_seconds,
-                           count=count)
 
 @quiz_bp.route('/submit-quiz', methods=['POST'])
 @login_required
@@ -134,7 +178,7 @@ def submit_quiz():
     quiz_questions = session.get('current_quiz')
     
     if not quiz_questions:
-        flash("Quiz session expired. Please restart.", "danger")
+        flash("Quiz session expired.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
 
     user_answers = {}
@@ -143,36 +187,32 @@ def submit_quiz():
 
     for i, q in enumerate(quiz_questions):
         user_ans = request.form.get(f'ans-{i}', "").strip().lower()
-        corrent_ans = str(q.get('ans', "")).strip().lower()
+        correct_ans = str(q.get('ans', "")).strip().lower()
+        user_answers[str(i)] = user_ans
 
-        
         if q['type'] == 'objective':
-            similarity = fuzz.token_set_ratio(user_ans, corrent_ans)
-            if similarity > 90:
+            if fuzz.token_set_ratio(user_ans, correct_ans) > 90:
                 score += 1
             else:
                 failed_qs.append(q['q'])
-        
         else:
-            keywords = [k.lower()for k in q.get('keywords', [])]
-            found_keywords =  [word for word in keywords if word in user_ans]
-
-            if len(found_keywords) >= (len(keywords)/2) and len(keywords)>0:
+            keywords = [k.lower() for k in q.get('keywords', [])]
+            found = [w for w in keywords if w in user_ans]
+            if len(keywords) > 0 and len(found) >= (len(keywords) / 2):
                 score += 1
             else:
                 failed_qs.append(q['q'])
         
-                
-    # AI Tutor Feedback
-    advice_prompt = f"The student took a quiz and failed these topics: {failed_qs[:3]}. Give a brief Study Tip and a YouTube search term for them."
+    # Generate Feedback
+    advice_prompt = f"Student scored {score}/{len(quiz_questions)}. Failed topics: {failed_qs[:2]}. Give a 2-sentence tip and a YouTube search term."
     try:
-        completion = ai_assistant.client.chat.completions.create(
-            model=ai_assistant.model,
+        fb = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": advice_prompt}]
         )
-        tutor_advice = completion.choices[0].message.content
+        tutor_advice = fb.choices[0].message.content
     except:
-        tutor_advice = "Focus on the key concepts mentioned in the lecture notes and try again!"
+        tutor_advice = "Good job! Keep studying your notes."
 
     new_result = Quiz(
         lecture_id=lecture_id,
@@ -185,8 +225,6 @@ def submit_quiz():
     )
     db.session.add(new_result)
     db.session.commit()
-    
-    # Clear session to prevent resubmission
     session.pop('current_quiz', None)
 
     return redirect(url_for('quiz.view_results', quiz_id=new_result.id))
@@ -196,12 +234,12 @@ def submit_quiz():
 def view_results(quiz_id):
     quiz = db.session.get(Quiz, quiz_id)
     if not quiz or quiz.user_id != current_user.id:
-        flash("Result not found.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
+    
     questions = json.loads(quiz.questions_json)
     user_answers = json.loads(quiz.user_answers)
-
     quiz_details = []
+
     for i, q in enumerate(questions):
         u_ans = user_answers.get(str(i), "No Answer")
         if q['type'] == 'objective':
@@ -209,10 +247,11 @@ def view_results(quiz_id):
             correct_display = q.get('ans')
         else:
             keywords = [k.lower() for k in q.get('keywords', [])]
-            found = [word for word in keywords if word in u_ans.lower()]
-            is_correct = len(found) >= (len(keywords)/2) and len(keywords)>0
-            correct_display = ", ".join(q.get('keywords', []))
-            quiz_details.append({
+            found = [w for w in keywords if w in u_ans.lower()]
+            is_correct = len(found) >= (len(keywords)/2) and len(keywords) > 0
+            correct_display = "Keywords: " + ", ".join(q.get('keywords', []))
+        
+        quiz_details.append({
             'question': q['q'],
             'user_answer': u_ans,
             'correct_answer': correct_display,

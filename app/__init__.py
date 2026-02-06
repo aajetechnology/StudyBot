@@ -32,7 +32,7 @@ def create_app(config_class=Config):
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(processor_bp)
-    app.register_blueprint(quiz_bp)
+    app.register_blueprint(quiz_bp, url_prefix='/quiz')
     app.register_blueprint(library_bp)
     app.register_blueprint(classroom_bp)
 

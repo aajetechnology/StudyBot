@@ -147,6 +147,7 @@
     #terminal-body::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
 </style>
 
+
 <script>
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('lectureFile');
@@ -156,10 +157,8 @@
     const logContainer = document.getElementById('log-container');
     const submitBtn = document.getElementById('submitBtn');
 
-    // Handle Drop Zone Clicking
     dropZone.onclick = () => fileInput.click();
 
-    // Show filename when chosen
     fileInput.onchange = () => {
         if (fileInput.files.length > 0) {
             fileChosen.innerHTML = `<i class="bi bi-file-earmark-check me-1"></i> ${fileInput.files[0].name}`;
@@ -174,7 +173,6 @@
         const customTitleInput = document.getElementById('customTitle').value;
         const exportFormat = document.querySelector('input[name="export_format"]:checked').value;
 
-        // Validation
         if (!fileInput.files[0]) {
             alert("Please select a file first.");
             return;
@@ -182,9 +180,10 @@
 
         const finalTitle = customTitleInput || fileInput.files[0].name;
 
-        // UI Prep
+        // UI Preparation
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading to Server...';
+        terminal.innerHTML = ''; // Clear previous logs
         
         try {
             const response = await fetch("{{ url_for('processor.upload_lecture') }}", {
@@ -195,52 +194,67 @@
             if (response.ok) {
                 const result = await response.json();
                 
-                // Show terminal and update button
                 logContainer.classList.remove('d-none');
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>AI Processing...';
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>AI Professor is Reading...';
                 
-                // Start SSE Stream
+                // Construct the Stream URL
                 const streamUrl = `/process-log/${encodeURIComponent(result.filename)}?title=${encodeURIComponent(finalTitle)}&format=${exportFormat}`;
                 const eventSource = new EventSource(streamUrl);
 
                 eventSource.onmessage = function(e) {
                     const data = JSON.parse(e.data);
-                    const newLine = document.createElement('div');
                     
-                    newLine.className = `mb-1 ${data.class}`;
-                    newLine.innerHTML = `<span class="text-secondary opacity-50">>></span> ${data.msg}`;
-
-                    terminal.appendChild(newLine);
-                    terminal.scrollTop = terminal.scrollHeight;
-
-                    if (data.msg.includes('COMPLETE')) {
+                    // Check for our custom "Finished" signal from backend
+                    if (data.message === "____FINISHED____") {
                         eventSource.close();
-                        submitBtn.innerHTML = '✅ Generation Finished!';
+                        submitBtn.innerHTML = '✅ Processed Successfully!';
                         submitBtn.classList.replace('btn-primary', 'btn-success');
-                        setTimeout(() => { window.location.reload(); }, 2000);
+                        setTimeout(() => { window.location.reload(); }, 1500);
+                        return;
+                    }
+
+                    if (data.msg) {
+                        const newLine = document.createElement('div');
+                        newLine.className = `mb-1 ${data.class || 'text-success'}`;
+                        newLine.innerHTML = `<span class="text-secondary opacity-50">>></span> ${data.msg}`;
+                        terminal.appendChild(newLine);
+                        
+                        // Auto-scroll to bottom
+                        terminal.scrollTop = terminal.scrollHeight;
                     }
                 };
 
-                eventSource.onerror = function() {
+                eventSource.onerror = function(err) {
+                    // EventSource automatically tries to reconnect on error. 
+                    // We close it manually if it fails to prevent double-processing.
+                    console.error("EventSource failed:", err);
                     eventSource.close();
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '✨ Generate Study Guide';
-                    const errLine = document.createElement('div');
-                    errLine.className = 'text-danger fw-bold';
-                    errLine.innerHTML = '>> [FATAL]: Stream interrupted.';
-                    terminal.appendChild(errLine);
+                    
+                    // If we already have text in the terminal, don't show fatal error immediately
+                    // unless the process actually stopped without a FINISHED signal.
+                    if (!submitBtn.classList.contains('btn-success')) {
+                        const errLine = document.createElement('div');
+                        errLine.className = 'text-danger fw-bold mt-2';
+                        errLine.innerHTML = '>> [SYSTEM]: Connection reset. Checking database...';
+                        terminal.appendChild(errLine);
+                        
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '✨ Retry AI Processing';
+                    }
                 };
             } else {
                 const errorData = await response.json();
-                alert("Error: " + errorData.message);
+                alert("Upload Failed: " + errorData.message);
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '✨ Generate Study Guide';
+                submitBtn.innerHTML = '✨ Start AI Processing';
             }
         } catch (err) {
             console.error(err);
+            alert("Network Error. Check your connection.");
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '✨ Generate Study Guide';
+            submitBtn.innerHTML = '✨ Start AI Processing';
         }
     };
 </script>
+
 {% endblock %}

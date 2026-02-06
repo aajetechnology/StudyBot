@@ -53,56 +53,122 @@ def stream_transcription(filename):
 @processor_bp.route('/process-log/<filename>')
 @login_required
 def process_log(filename):
-    # Capture the custom title and format from the JavaScript URL
+    # 1. Capture user preferences
     custom_title = request.args.get('title') or filename
     export_format = request.args.get('format') or 'pdf'
 
     def generate():
         file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         
-        # 1. Transcription
-        yield f"data: {json.dumps({'msg': '>>> STARTING TRANSCRIPTION...', 'class': 'text-warning'})}\n\n"
+        # --- PHASE 1: INITIALIZATION ---
+        yield f"data: {json.dumps({'msg': '>>> SYSTEM BOOTING: AI PROFESSOR ONLINE', 'class': 'text-info'})}\n\n"
+        
+        # --- PHASE 2: TRANSCRIPTION (With Heartbeat) ---
         transcript_text = ""
         from utils.transcriber import transcribe_audio_stream
-        for line, final in transcribe_audio_stream(file_path):
+        
+        try:
+            yield f"data: {json.dumps({'msg': '>>> UPLOADING AUDIO TO GROQ WHISPER...', 'class': 'text-warning'})}\n\n"
+            for line, final in transcribe_audio_stream(file_path):
+                if line:
+                    # Every line yielded here resets the timeout clock
+                    yield f"data: {json.dumps({'msg': line, 'class': 'text-success'})}\n\n"
+                if final:
+                    transcript_text = final
+        except Exception as e:
+            yield f"data: {json.dumps({'msg': f'❌ TRANSCRIPTION ERROR: {str(e)}', 'class': 'text-danger fw-bold'})}\n\n"
+            return
+
+        if not transcript_text:
+            yield f"data: {json.dumps({'msg': '❌ ERROR: No text detected in audio.', 'class': 'text-danger'})}\n\n"
+            return
+
+        # --- PHASE 3: AI SUMMARIZATION (Streaming) ---
+        summary_text = ""
+        try:
+            yield f"data: {json.dumps({'msg': '>>> TRANSCRIPTION SUCCESS. ANALYZING CONTENT...', 'class': 'text-warning'})}\n\n"
+            from utils.summarizer import ai_assistant
+            
+            # We treat the summarizer as a generator to keep the stream alive
+            counter = 0
+            for chunk, final in ai_assistant.get_study_notes(transcript_text):
+                if chunk:
+                    # To avoid flooding the terminal, we send a 'ping' every 10 chunks
+                    counter += 1
+                    if counter % 10 == 0:
+                        yield f"data: {json.dumps({'msg': 'Professor is writing notes...', 'class': 'text-info small'})}\n\n"
+                if final:
+                    summary_text = final
+        except Exception as e:
+            error_msg = f"AI Error: {str(e)}"
+            summary_text = f"Notice: Transcript saved, but summary failed. ({error_msg})"
+            yield f"data: {json.dumps({'msg': f'⚠️ {error_msg}', 'class': 'text-info'})}\n\n"
+
+        # --- PHASE 4: DATABASE & EXPORT ---
+        yield f"data: {json.dumps({'msg': '>>> FINALIZING STUDY GUIDE...', 'class': 'text-info'})}\n\n"
+        try:
+            # Save to Database
+            new_lecture = Lecture(
+                title=custom_title,
+                transcript=transcript_text,
+                summary=summary_text,
+                output_format=export_format,
+                user_id=current_user.id,
+                timestamp=datetime.utcnow()
+            )
+            db.session.add(new_lecture)
+            db.session.commit()
+
+            # Generate and Save File (PDF/Docx)
+            output_filename = f"output_{new_lecture.id}.{export_format}"
+            output_path = os.path.join('output', output_filename)
+            os.makedirs('output', exist_ok=True)
+            save_study_notes(summary_text, transcript_text, output_path)
+            
+            yield f"data: {json.dumps({'msg': '✅ ALL SYSTEMS GO. PROCESS COMPLETE.', 'class': 'text-primary fw-bold'})}\n\n"
+            
+            # 5. SIGNAL FINISH TO FRONTEND
+            yield f"data: {json.dumps({'message': '____FINISHED____'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'msg': f'❌ DB/SAVE ERROR: {str(e)}', 'class': 'text-danger'})}\n\n"
+
+    # Create the response object
+    response = Response(stream_with_context(generate()), mimetype='text/event-stream')
+    
+    # CRITICAL HEADERS: These bypass proxies and prevent buffering
+    response.headers['X-Accel-Buffering'] = 'no'
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Transfer-Encoding'] = 'chunked'
+    response.headers['Connection'] = 'keep-alive'
+    
+    return response
+
+
+@processor_bp.route('/classroom/<int:lecture_id>')
+@login_required
+def classroom(lecture_id):
+    lecture = Lecture.query.get_or_404(lecture_id)
+    
+    return render_template('classroom.html', lecture=lecture)
+
+
+@processor_bp.route('/stream-class/<int:lecture_id>')
+@login_required
+def stream_class(lecture_id):
+    lecture = Lecture.query.get_or_404(lecture_id)
+
+    def generate():
+        from utils.lecture_mode import start_class_mode_stream
+        # 1. Immediate Heartbeat to prevent "Busy" error
+        yield f"data: {json.dumps({'msg': '>>> Professor is entering the room...', 'class': 'text-info'})}\n\n"
+        
+        # 2. Call the AI
+        for line, final in start_class_mode_stream(lecture.transcript):
             if line:
                 yield f"data: {json.dumps({'msg': line, 'class': 'text-success'})}\n\n"
-            if final:
-                transcript_text = final
-
-        # 2. Summary with Error Handling
-        summary = "AI Summary generation failed."
-        try:
-            yield f"data: {json.dumps({'msg': '>>> GENERATING AI SUMMARY...', 'class': 'text-warning'})}\n\n"
-            from utils.summarizer import get_study_notes
-            summary = get_study_notes(transcript_text)
-        except Exception as e:
-            
-            print(f"CRITICAL AI ERROR: {str(e)}") 
-            
-            error_msg = f"AI Error: {str(e)}"
-            summary = f"Notice: The transcript was saved, but the summary failed. ({error_msg})"
-            yield f"data: {json.dumps({'msg': f'❌ {error_msg}', 'class': 'text-danger fw-bold'})}\n\n"
         
-        yield f"data: {json.dumps({'msg': '>>> SAVING TO DATABASE...', 'class': 'text-info'})}\n\n"
-        new_lecture = Lecture(
-            title=custom_title,
-            transcript=transcript_text,
-            summary=summary,
-            output_format=export_format,
-            user_id=current_user.id,
-            timestamp=datetime.utcnow()
-        )
-        db.session.add(new_lecture)
-        db.session.commit()
-
-        # 4. Save Physical File
-        output_filename = f"output_{new_lecture.id}.{export_format}"
-        output_path = os.path.join('output', output_filename)
-        os.makedirs('output', exist_ok=True)
-        save_study_notes(summary, transcript_text, output_path)
-        
-        yield f"data: {json.dumps({'msg': '--- PROCESS COMPLETE ---', 'class': 'text-primary fw-bold'})}\n\n"
+        yield f"data: {json.dumps({'msg': '____FINISHED____'})}\n\n"
 
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 

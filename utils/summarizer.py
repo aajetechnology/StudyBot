@@ -3,7 +3,6 @@ import logging
 from groq import Groq
 from dotenv import load_dotenv
 
-# Set up structured logging instead of print()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -19,20 +18,20 @@ class StudyAI:
         self.client = Groq(api_key=self.api_key)
         self.model = "llama-3.3-70b-versatile"
 
-    def get_study_notes(self, transcript, format_type="markdown"):
+    def get_study_notes(self, transcript):
         """
-        Generates structured study notes with error handling and input validation.
+        Generates structured study notes using a GENERATOR to prevent timeouts.
         """
         if not transcript or len(transcript.strip()) < 50:
-            logger.warning("Transcript received is too short for processing.")
-            return "The provided content was too brief to generate meaningful study notes."
+            yield "The provided content was too brief to generate meaningful study notes.", None
+            return
 
-        # Production tip: Limit input size to stay within model context limits
         truncated_transcript = transcript[:15000] 
 
         try:
-            logger.info(f"Starting AI generation for transcript ({len(truncated_transcript)} chars)")
+            logger.info("Starting Streaming AI generation...")
             
+            # Switch stream=True
             completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -45,26 +44,24 @@ class StudyAI:
                     },
                     {"role": "user", "content": f"Please summarize this lecture transcript:\n\n{truncated_transcript}"}
                 ],
-                temperature=0.5, # Lower temperature = more factual/stable output
+                temperature=0.5,
                 max_tokens=2048,
-                top_p=1,
-                stream=False
+                stream=True  # CRITICAL: Now streaming
             )
 
-            result = completion.choices[0].message.content
-            
-            if not result:
-                throw_err = "AI returned an empty response."
-                logger.error(throw_err)
-                return "Error: AI failed to generate content."
+            full_response = []
+            for chunk in completion:
+                content = chunk.choices[0].delta.content
+                if content:
+                    full_response.append(content)
+                    # Yielding None as the final flag so process_log knows this is a log/pulse
+                    yield content, None
 
-            logger.info("AI generation successful.")
-            return result
+            # Final yield with the full concatenated string for the DB/File saving
+            yield None, "".join(full_response)
 
         except Exception as e:
             logger.error(f"Groq API Critical Error: {str(e)}")
-            
-            return "System busy: AI processing failed. Please try again in a few moments."
-
+            yield f"System busy: {str(e)}", None
 
 ai_assistant = StudyAI()

@@ -2,6 +2,8 @@
 {% block title %}Classroom: {{ module_title }}{% endblock %}
 
 {% block content %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 <div class="container-fluid py-4" style="max-width: 1200px;">
     <div class="row g-4">
         
@@ -11,17 +13,17 @@
                     <h6 class="fw-bold text-uppercase text-muted small mb-4">Course Progress</h6>
                     <div class="progress mb-4" style="height: 8px;">
                         {% set progress = (step / total_steps * 100)|int %}
-                        <div class="progress-bar bg-primary rounded-pill" style="width: {{ progress }}%"></div>
+                        <div class="progress-bar bg-primary rounded-pill progress-bar-animated" style="width: {{ progress }}%"></div>
                     </div>
                     
                     <div class="syllabus-list">
                         {% for i in range(total_steps) %}
-                        <div class="d-flex align-items-center mb-3">
+                        <div class="d-flex align-items-center mb-3 p-2 rounded-3 {% if i + 1 == step %}bg-primary bg-opacity-10{% endif %}">
                             <div class="me-3">
                                 {% if i + 1 < step %}
                                     <i class="bi bi-check-circle-fill text-success fs-5"></i>
                                 {% elif i + 1 == step %}
-                                    <i class="bi bi-play-circle-fill text-primary fs-5 shadow-sm"></i>
+                                    <i class="bi bi-play-circle-fill text-primary fs-5 shadow-sm pulse-icon"></i>
                                 {% else %}
                                     <i class="bi bi-circle text-muted fs-5"></i>
                                 {% endif %}
@@ -41,33 +43,37 @@
                 <div class="card-header bg-white border-0 p-4 pb-0">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-2">
-                            <li class="breadcrumb-item small text-uppercase">Module {{ step }} of {{ total_steps }}</li>
+                            <li class="breadcrumb-item small text-uppercase text-primary fw-bold">Academy Mode</li>
+                            <li class="breadcrumb-item small text-uppercase active">Module {{ step }} of {{ total_steps }}</li>
                         </ol>
                     </nav>
                     <h3 class="fw-bold text-dark">{{ module_title }}</h3>
                 </div>
 
                 <div class="card-body p-4">
-                    <div class="bg-light p-4 rounded-4 mb-4" style="line-height: 1.8; font-size: 1.1rem; color: #344767;">
-                        {{ explanation | replace('\n', '<br>') | safe }}
+                    <div class="bg-light p-4 rounded-4 mb-4 shadow-inner" style="line-height: 1.8; font-size: 1.1rem; color: #344767; border-left: 5px solid #0d6efd; min-height: 400px;">
+                        <div id="stream-content">
+                            <em class="text-muted">Connecting to Professor...</em>
+                        </div>
+                        <span id="cursor" class="badge bg-primary ms-1" style="width: 8px; height: 18px; padding: 0; vertical-align: middle; animation: blink 1s infinite;"> </span>
                     </div>
 
                     <div class="d-flex flex-wrap gap-3">
                         {% if step < total_steps %}
-                        <a href="{{ url_for('classroom.next_module') }}" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm">
+                        <a href="{{ url_for('classroom.next_module') }}" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm transition-all">
                             I Understand, Next Module <i class="bi bi-arrow-right ms-2"></i>
                         </a>
                         {% else %}
-                        <a href="{{ url_for('classroom.classroom_selection') }}" class="btn btn-success rounded-pill px-4 py-2 fw-bold">
-                            Course Completed! <i class="bi bi-trophy ms-2"></i>
+                        <a href="{{ url_for('classroom.classroom_selection') }}" class="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm">
+                            Finish Course <i class="bi bi-trophy ms-2"></i>
                         </a>
                         {% endif %}
                         
-                        <button class="btn btn-outline-dark rounded-pill px-4 py-2" data-bs-toggle="modal" data-bs-target="#questionModal">
-                            <i class="bi bi-chat-dots me-2"></i>Ask a Question
+                        <button class="btn btn-outline-dark rounded-pill px-4 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#questionModal">
+                            <i class="bi bi-chat-dots me-2"></i>Ask Professor
                         </button>
 
-                        <a href="{{ url_for('quiz.run_exam', lecture_id=lecture_id, count=5) }}" class="btn btn-warning rounded-pill px-4 py-2 fw-bold">
+                        <a href="{{ url_for('quiz.run_exam', lecture_id=lecture_id, count=5) }}" class="btn btn-warning rounded-pill px-4 py-2 fw-bold shadow-sm">
                             <i class="bi bi-lightning-fill me-2"></i>Quick Test
                         </a>
                     </div>
@@ -81,19 +87,25 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header border-0 p-4">
-                <h5 class="modal-title fw-bold"><i class="bi bi-question-circle text-primary me-2"></i>Ask Professor</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-stars text-primary me-2"></i>Ask AI Professor</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 pt-0">
-                <p class="text-muted small mb-3">Is something unclear? Ask me to explain it differently or give more examples.</p>
                 <form id="tutorForm">
                     <input type="hidden" name="module_title" value="{{ module_title }}">
-                    <textarea class="form-control rounded-4 border-light shadow-sm mb-3" name="question" rows="4" placeholder="e.g., 'Can you explain the last part with an example?'"></textarea>
-                    <div id="tutorResponse" class="p-3 bg-primary bg-opacity-10 rounded-3 mb-3 d-none">
+                    <textarea class="form-control rounded-4 border-light shadow-sm mb-3 p-3" name="question" rows="3" placeholder="Ask anything about this module..."></textarea>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-primary"><i class="bi bi-camera-fill me-1"></i> Attach Photo of Note (Optional)</label>
+                        <input type="file" name="note_image" id="modalImageInput" accept="image/*" class="form-control form-control-sm rounded-3">
+                        <div id="modalPreview" class="mt-2 d-none">
+                            <img src="" id="previewImg" class="rounded shadow-sm border" style="max-height: 100px;">
                         </div>
-                    <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2" id="askBtn">
-                        Ask Question
-                    </button>
+                    </div>
+
+                    <div id="tutorResponse" class="p-3 bg-primary bg-opacity-10 rounded-4 mb-3 d-none" style="max-height: 250px; overflow-y: auto; border-left: 3px solid #0d6efd;"></div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2 shadow-sm" id="askBtn">Ask Professor</button>
                 </form>
             </div>
         </div>
@@ -101,32 +113,92 @@
 </div>
 
 <script>
+// --- 1. LECTURE STREAMING LOGIC ---
+const streamDiv = document.getElementById('stream-content');
+const cursor = document.getElementById('cursor');
+let fullMarkdown = "";
+
+const eventSource = new EventSource("{{ url_for('classroom.stream_module_content') }}");
+
+eventSource.onmessage = function(event) {
+    try {
+        const data = JSON.parse(event.data);
+        
+        if (data.msg === "____FINISHED____") {
+            eventSource.close();
+            if (cursor) cursor.style.display = 'none';
+            return;
+        }
+
+        if (data.msg.startsWith(">>>")) {
+            streamDiv.innerHTML = `<div class="text-primary mb-3 small fw-bold"><i class="bi bi-info-circle me-2"></i>${data.msg}</div>`;
+        } else {
+            fullMarkdown += data.msg;
+            if (typeof marked !== 'undefined') {
+                streamDiv.innerHTML = marked.parse(fullMarkdown);
+            } else {
+                streamDiv.innerText = fullMarkdown;
+            }
+        }
+        // Auto-scroll as content grows
+        window.scrollTo(0, document.body.scrollHeight);
+    } catch (err) {
+        console.error("Stream parsing error:", err);
+    }
+};
+
+eventSource.onerror = function() {
+    eventSource.close();
+    if (cursor) cursor.style.display = 'none';
+    console.log("Stream connection ended.");
+};
+
+// --- 2. ASK TUTOR LOGIC ---
+document.getElementById('modalImageInput').onchange = function() {
+    const file = this.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('modalPreview').classList.remove('d-none');
+            document.getElementById('previewImg').src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+};
+
 document.getElementById('tutorForm').onsubmit = async (e) => {
     e.preventDefault();
     const btn = document.getElementById('askBtn');
     const responseDiv = document.getElementById('tutorResponse');
-    
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Thinking...';
+    btn.innerHTML = 'Thinking...';
 
-    const formData = new FormData(e.target);
-    const res = await fetch("{{ url_for('classroom.ask_tutor') }}", {
-        method: 'POST',
-        body: formData
-    });
-    
-    const data = await res.json();
-    responseDiv.classList.remove('d-none');
-    responseDiv.innerHTML = `<strong>Professor:</strong><br>${data.answer}`;
-    
-    btn.disabled = false;
-    btn.innerHTML = 'Ask Question';
+    try {
+        const res = await fetch("{{ url_for('classroom.ask_tutor') }}", {
+            method: 'POST',
+            body: new FormData(e.target)
+        });
+        const data = await res.json();
+        responseDiv.classList.remove('d-none');
+        responseDiv.innerHTML = `<div class="small fw-bold text-primary mb-1">Professor:</div><div class="small text-dark">${marked.parse(data.answer)}</div>`;
+    } catch (error) {
+        responseDiv.classList.remove('d-none');
+        responseDiv.innerHTML = `<div class="text-danger small">Error connecting to server.</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Ask Professor';
+    }
 };
 </script>
 
 <style>
+    @keyframes blink { 50% { opacity: 0; } }
     body { background-color: #f8f9fa; }
-    .breadcrumb-item + .breadcrumb-item::before { content: "•"; }
+    .shadow-inner { box-shadow: inset 0 2px 4px rgba(0,0,0,0.03); }
     .sticky-top { z-index: 1000; }
+    .pulse-icon { animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    .transition-all:hover { transform: translateY(-2px); filter: brightness(1.1); transition: all 0.2s; }
+    #stream-content h1, #stream-content h2, #stream-content h3 { font-size: 1.4rem; color: #0d6efd; margin-top: 1rem; }
 </style>
 {% endblock %}

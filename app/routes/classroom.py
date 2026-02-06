@@ -1,129 +1,181 @@
 import json
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+import base64
+import os
+import io
+import time
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, Response, stream_with_context
 from flask_login import login_required, current_user
 from app.models import db, Lecture
-from utils.summarizer import ai_assistant
+from groq import Groq
+from pypdf import PdfReader
+import pypdfium2 as pdfium
 
 classroom_bp = Blueprint('classroom', __name__)
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+# --- UTILITY FUNCTIONS (OCR & VISION) ---
+
+def call_groq_vision(base64_image, prompt_text):
+    try:
+        response = client.chat.completions.create(
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt_text},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                ]
+            }],
+            model="llama-3.2-11b-vision-preview",
+        )
+        return response.choices[0].message.content + "\n"
+    except Exception as e:
+        return f"\n[Vision Error: {str(e)}]\n"
+
+def extract_text_from_file(file):
+    filename = file.filename.lower()
+    extracted_text = ""
+    if filename.endswith('.pdf'):
+        reader = PdfReader(file)
+        for page in reader.pages:
+            extracted_text += page.extract_text() or ""
+        
+        if len(extracted_text.strip()) < 50:
+            file.seek(0)
+            pdf = pdfium.PdfDocument(file)
+            for i in range(min(5, len(pdf))):
+                page = pdf[i]
+                bitmap = page.render(scale=2)
+                pil_image = bitmap.to_pil()
+                img_byte_arr = io.BytesIO()
+                pil_image.save(img_byte_arr, format='JPEG')
+                base64_image = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+                extracted_text += call_groq_vision(base64_image, "Extract lecture text.")
+            pdf.close()
+    elif filename.endswith(('.png', '.jpg', '.jpeg')):
+        image_bytes = file.read()
+        base64_image = base64.b64encode(image_bytes).decode('utf-8')
+        extracted_text = call_groq_vision(base64_image, "Transcribe perfectly.")
+    return extracted_text
+
+# --- CORE ROUTES ---
 
 @classroom_bp.route('/classroom-selection')
 @login_required
 def classroom_selection():
-    """Page to select which lecture to be taught."""
     lectures = Lecture.query.filter_by(user_id=current_user.id).order_by(Lecture.timestamp.desc()).all()
     return render_template('classroom_selection.html', lectures=lectures)
 
 @classroom_bp.route('/init-class/<int:lecture_id>')
 @login_required
 def init_class(lecture_id):
-    """Analyze the lecture and divide it into learning modules."""
     lecture = db.session.get(Lecture, lecture_id)
     if not lecture:
         flash("Lecture not found.", "danger")
         return redirect(url_for('classroom.classroom_selection'))
 
-    # Prompt AI to create a syllabus/table of contents
-    syllabus_prompt = f"""
-    You are an expert curriculum designer. Break the following lecture content into a logical sequence of 4 to 6 learning modules.
-    Return ONLY a JSON object with a 'modules' key containing a list of strings (titles).
-    Lecture Title: {lecture.title}
-    Content: {lecture.transcript[:5000]}
-    """
+    # Logic: Try transcript first, then content (PDF/OCR), then summary.
+    raw_content = lecture.transcript or getattr(lecture, 'content', None) or lecture.summary
+    
+    if not raw_content:
+        flash("This lecture has no content to teach from.", "warning")
+        return redirect(url_for('classroom.classroom_selection'))
+
+    syllabus_prompt = f"Break this lecture into 4-6 modules. Return ONLY JSON with a key 'modules' (list of strings). Content: {raw_content[:4000]}"
 
     try:
-        completion = ai_assistant.client.chat.completions.create(
-            model=ai_assistant.model,
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": syllabus_prompt}],
             response_format={"type": "json_object"}
         )
         syllabus = json.loads(completion.choices[0].message.content)
         
-        # Save syllabus and progress in session
         session['classroom_syllabus'] = syllabus.get('modules', ["Introduction", "Core Concepts", "Summary"])
         session['classroom_step'] = 0
         session['classroom_lecture_id'] = lecture_id
         
         return redirect(url_for('classroom.teach_module'))
     except Exception as e:
-        flash("Could not initialize classroom. Try again.", "danger")
+        flash(f"Classroom Init Failed: {str(e)}", "danger")
         return redirect(url_for('classroom.classroom_selection'))
 
 @classroom_bp.route('/teach')
 @login_required
 def teach_module():
-    """The main teaching interface for the current module."""
     lecture_id = session.get('classroom_lecture_id')
     step = session.get('classroom_step', 0)
     syllabus = session.get('classroom_syllabus', [])
 
     if not lecture_id or step >= len(syllabus):
-        flash("Class session ended or not found.", "info")
         return redirect(url_for('classroom.classroom_selection'))
 
-    lecture = db.session.get(Lecture, lecture_id)
-    current_module_title = syllabus[step]
+    return render_template('classroom_view.html', 
+                           module_title=syllabus[step],
+                           step=step + 1,
+                           total_steps=len(syllabus),
+                           lecture_id=lecture_id)
 
-    # AI Teaching Prompt
-    teach_prompt = f"""
-    You are a supportive and detailed AI Professor. 
-    Explain the module: "{current_module_title}" based on the lecture: "{lecture.title}".
+@classroom_bp.route('/stream-module-content')
+@login_required
+def stream_module_content():
+    lecture_id = session.get('classroom_lecture_id')
+    step = session.get('classroom_step', 0)
+    syllabus = session.get('classroom_syllabus', [])
     
-    Guidelines:
-    1. Provide a detailed, easy-to-understand explanation of this specific part.
-    2. Use analogies if the concept is complex.
-    3. Suggest one relevant YouTube search term.
-    4. Recommend one book for further reading.
-    5. Ask the student if they understand or want a test.
+    lecture = db.session.get(Lecture, lecture_id)
+    if not lecture:
+        return Response("data: " + json.dumps({"msg": "❌ Lecture not found."}) + "\n\n", mimetype='text/event-stream')
 
-    Content context: {lecture.transcript[:8000]}
-    """
+    # SYNC FIX: Ensure we check both transcript and content
+    raw_content = lecture.transcript or getattr(lecture, 'content', None) or lecture.summary or "No notes found."
+    current_module_title = syllabus[step] if step < len(syllabus) else "Discussion"
 
-    try:
-        completion = ai_assistant.client.chat.completions.create(
-            model=ai_assistant.model,
-            messages=[{"role": "user", "content": teach_prompt}]
-        )
-        explanation = completion.choices[0].message.content
-        
-        return render_template('classroom_view.html', 
-                               explanation=explanation, 
-                               module_title=current_module_title,
-                               step=step + 1,
-                               total_steps=len(syllabus),
-                               lecture_id=lecture_id)
-    except Exception as e:
-        flash("Teacher is having trouble. Please refresh.", "warning")
-        return redirect(url_for('classroom.classroom_selection'))
+    def generate():
+        try:
+            yield f"data: {json.dumps({'msg': '>>> The Professor is checking the notes...', 'class': 'text-info'})}\n\n"
+            
+            response_stream = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You are an engaging Professor. Teach the module clearly using Markdown. Use bolding and lists for readability."},
+                    {"role": "user", "content": f"Teach Module: {current_module_title}. Context: {raw_content[:12000]}"}
+                ],
+                stream=True
+            )
+
+            for chunk in response_stream:
+                if chunk.choices[0].delta.content:
+                    yield f"data: {json.dumps({'msg': chunk.choices[0].delta.content})}\n\n"
+            
+            yield f"data: {json.dumps({'msg': '____FINISHED____'})}\n\n"
+                    
+        except Exception as e:
+            yield f"data: {json.dumps({'msg': f'❌ Professor Error: {str(e)}'})}\n\n"
+
+    # CRITICAL: Headers to ensure real-time delivery
+    response = Response(stream_with_context(generate()), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no' 
+    response.headers['Connection'] = 'keep-alive'
+    return response
 
 @classroom_bp.route('/ask-tutor', methods=['POST'])
 @login_required
 def ask_tutor():
-    """Handle student questions during a module."""
-    user_question = request.form.get('question')
-    module_title = request.form.get('module_title')
-    lecture_id = session.get('classroom_lecture_id')
+    question = request.form.get('question', '')
+    module_title = request.form.get('module_title', '')
     
-    lecture = db.session.get(Lecture, lecture_id)
-    
-    answer_prompt = f"""
-    The student is learning about "{module_title}" from the lecture "{lecture.title}".
-    They have a question: "{user_question}".
-    Answer them clearly based on this context: {lecture.transcript[:4000]}
-    """
-
-    try:
-        completion = ai_assistant.client.chat.completions.create(
-            model=ai_assistant.model,
-            messages=[{"role": "user", "content": answer_prompt}]
-        )
-        answer = completion.choices[0].message.content
-        return {"answer": answer}
-    except:
-        return {"answer": "I'm sorry, I couldn't process that question right now."}
+    response = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": f"You are a Professor teaching: {module_title}"},
+            {"role": "user", "content": question}
+        ],
+        model="llama-3.3-70b-versatile",
+    )
+    return jsonify({"answer": response.choices[0].message.content})
 
 @classroom_bp.route('/next-module')
 @login_required
 def next_module():
-    """Move to the next part of the lecture."""
     session['classroom_step'] = session.get('classroom_step', 0) + 1
     return redirect(url_for('classroom.teach_module'))
