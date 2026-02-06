@@ -54,3 +54,27 @@ class Quiz(db.Model):
     feedback = db.Column(db.Text)        
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    lecture_id= db.Column(db.Integer, db.ForeignKey('lectures.id'), nullable=False)
+    lecture = db.relationship('Lecture', backref='quizzes')
+
+
+
+
+class ClassSession(db.Model):
+    __tablename__ = 'class_session'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # FIX: Point to 'users.id' (Matches your User table)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # FIX: Point to 'lectures.id' (Matches your Lecture table)
+    lecture_id = db.Column(db.Integer, db.ForeignKey('lectures.id'), nullable=False)
+    
+    current_module_index = db.Column(db.Integer, default=0)
+    modules_json = db.Column(db.Text) 
+    is_active = db.Column(db.Boolean, default=True)
+
+    # Relationships
+    lecture = db.relationship('Lecture', backref='class_sessions')
+    user = db.relationship('User', backref='class_sessions')

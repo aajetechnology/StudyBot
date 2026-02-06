@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Start Learning - Classroom{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <div class="bg-primary bg-opacity-10 d-inline-block p-4 rounded-circle mb-3">
+            <i class="bi bi-mortarboard-fill text-primary fs-1"></i>
+        </div>
+        <h2 class="fw-bold">Class Mode</h2>
+        <p class="text-muted mx-auto" style="max-width: 600px;">
+            Select a document, and our AI Professor will break it down into interactive modules, 
+            teaching you step-by-step until you fully master the topic.
+        </p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4">
+                        <i class="bi bi-collection-play me-2 text-primary"></i>Your Documents
+                    </h5>
+                    
+                    <div class="list-group list-group-flush overflow-auto" style="max-height: 400px;">
+                        {% for lecture in lectures %}
+                        <div class="list-group-item border-0 px-0 mb-2">
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded-3 bg-light hover-shadow transition-all">
+                                <div class="d-flex align-items-center overflow-hidden">
+                                    <i class="bi bi-file-earmark-pdf fs-4 text-danger me-3"></i>
+                                    <div class="text-truncate">
+                                        <div class="fw-bold text-dark text-truncate">{{ lecture.title }}</div>
+                                        <small class="text-muted">{{ lecture.timestamp.strftime('%d %b, %Y') }}</small>
+                                    </div>
+                                </div>
+                                <a href="{{ url_for('classroom.init_class', lecture_id=lecture.id) }}" 
+                                   class="btn btn-primary btn-sm rounded-pill px-4 ms-3">
+                                    Start Class
+                                </a>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-cloud-slash fs-2 text-muted d-block mb-2"></i>
+                            <p class="text-muted small">No documents found. Upload one to begin!</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 bg-primary text-white h-100">
+                <div class="card-body p-5 d-flex flex-column justify-content-center">
+                    <h4 class="fw-bold mb-3">New Material?</h4>
+                    <p class="opacity-75 mb-4">Upload a PDF or Word document, and we'll instantly organize a syllabus for you.</p>
+                    
+                    <form action="{{ url_for('quiz.start_quiz') }}" method="POST" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold">Select File</label>
+                            <input type="file" name="doc_file" class="form-control bg-white text-dark rounded-pill shadow-none border-0" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-light rounded-pill fw-bold py-2">
+                                <i class="bi bi-upload me-2"></i>Upload & Learn
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="mt-4 pt-4 border-top border-white border-opacity-10 text-center">
+                        <small class="opacity-50">Supported formats: PDF, DOCX, TXT</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-shadow:hover {
+        background-color: #eef2ff !important;
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .transition-all {
+        transition: all 0.3s ease;
+    }
+    .list-group::-webkit-scrollbar {
+        width: 5px;
+    }
+    .list-group::-webkit-scrollbar-thumb {
+        background: #dee2e6;
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}

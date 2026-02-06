@@ -3,9 +3,15 @@ from app import create_app, db
 app = create_app()
 
 if __name__ == '__main__':
-    # This block ensures tables are created before the server starts
     with app.app_context():
-        db.create_all()
-        print("✅ Database tables verified/created.")
+        # This is the "Magic" line. Importing them here registers them 
+        # inside the application context so db.create_all() sees them.
+        from app.models import User, Lecture, Quiz, ClassSession
+        
+        try:
+            db.create_all()
+            print("--- Database Tables Synchronized! ---")
+        except Exception as e:
+            print(f"--- Database Error: {e} ---")
 
-    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
+    app.run(debug=True)

@@ -1,48 +1,116 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row justify-content-center">
+<div class="row justify-content-center py-4">
     <div class="col-md-8 text-center">
         <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4">
             <div class="card-body p-5">
                 <h2 class="fw-bold mb-4">Examination Finished!</h2>
                 
                 <div class="position-relative d-inline-block mb-4">
-                    <h1 class="display-1 fw-bold text-primary">{{ (quiz.score / quiz.total_questions * 100)|int }}%</h1>
+                    {% set percent = (quiz.score / quiz.total_questions * 100)|int if quiz.total_questions > 0 else 0 %}
+                    <h1 class="display-1 fw-bold {% if percent >= 70 %}text-success{% elif percent >= 40 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ percent }}%
+                    </h1>
                     <p class="text-muted">Score: {{ quiz.score }} / {{ quiz.total_questions }}</p>
                 </div>
 
                 <div class="row g-3">
                     <div class="col-6">
-                        <div class="p-3 bg-light rounded-3">
-                            <h4 class="mb-0 text-success">{{ quiz.score }}</h4>
-                            <small>Correct</small>
+                        <div class="p-3 bg-success bg-opacity-10 border border-success rounded-4 cursor-pointer hover-lift shadow-sm" 
+                             data-bs-toggle="collapse" data-bs-target="#correctDetails" aria-expanded="false">
+                            <h4 class="mb-0 text-success fw-bold">{{ quiz.score }}</h4>
+                            <small class="text-success text-uppercase small fw-bold">Passed (View)</small>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="p-3 bg-light rounded-3">
-                            <h4 class="mb-0 text-danger">{{ quiz.total_questions - quiz.score }}</h4>
-                            <small>Incorrect</small>
+                        <div class="p-3 bg-danger bg-opacity-10 border border-danger rounded-4 cursor-pointer hover-lift shadow-sm" 
+                             data-bs-toggle="collapse" data-bs-target="#incorrectDetails" aria-expanded="false">
+                            <h4 class="mb-0 text-danger fw-bold">{{ quiz.total_questions - quiz.score }}</h4>
+                            <small class="text-danger text-uppercase small fw-bold">Failed (View)</small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm border-0 rounded-4 text-start">
+        <div class="collapse mb-4" id="incorrectDetails" data-bs-parent=".row">
+            <div class="card border-0 shadow-sm rounded-4 text-start overflow-hidden">
+                <div class="card-header bg-danger text-white fw-bold py-3">
+                    <i class="bi bi-x-circle-fill me-2"></i> Review Failed Questions
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for item in quiz_details if not item.is_correct %}
+                    <li class="list-group-item p-4 border-start border-danger border-4">
+                        <p class="fw-bold mb-2">Q: {{ item.question }}</p>
+                        <div class="p-3 rounded-3 bg-danger bg-opacity-10 text-danger small mb-2 border border-danger border-opacity-10">
+                            <strong>Your Answer:</strong> {{ item.user_answer if item.user_answer else "No answer provided" }}
+                        </div>
+                        <div class="p-3 rounded-3 bg-success bg-opacity-10 text-success small border border-success border-opacity-10">
+                            <strong>Correct Answer:</strong> {{ item.correct_answer }}
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item p-5 text-center text-muted">
+                        <i class="bi bi-emoji-smile fs-2 d-block mb-2"></i>
+                        No failed questions to review!
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="collapse mb-4" id="correctDetails" data-bs-parent=".row">
+            <div class="card border-0 shadow-sm rounded-4 text-start overflow-hidden">
+                <div class="card-header bg-success text-white fw-bold py-3">
+                    <i class="bi bi-check-circle-fill me-2"></i> Review Correct Answers
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for item in quiz_details if item.is_correct %}
+                    <li class="list-group-item p-4 border-start border-success border-4">
+                        <p class="fw-bold mb-2">Q: {{ item.question }}</p>
+                        <div class="text-success small fw-medium">
+                            <i class="bi bi-patch-check-fill me-1"></i> Correct Answer: {{ item.correct_answer }}
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item p-5 text-center text-muted">
+                        Keep studying! Your correct answers will appear here.
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 rounded-4 text-start mb-5 bg-white">
             <div class="card-body p-4">
                 <h5 class="fw-bold text-primary border-bottom pb-2 mb-3">
-                    <i class="bi bi-lightbulb-fill me-2"></i>StudAI Tutor Advice
+                    <i class="bi bi-cpu-fill me-2"></i>StudAI Tutor Advice
                 </h5>
-                <div class="text-muted" style="line-height: 1.8;">
+                <div class="text-secondary" style="line-height: 1.8; font-size: 0.95rem;">
                     {{ quiz.feedback | replace('\n', '<br>') | safe }}
                 </div>
                 
                 <div class="mt-4 d-grid gap-2">
-                    <a href="{{ url_for('quiz.quiz_selection') }}" class="btn btn-primary rounded-pill py-2">Retake Another Quiz</a>
-                    <a href="{{ url_for('processor.dashboard') }}" class="btn btn-outline-secondary rounded-pill">Back to Dashboard</a>
+                    <a href="{{ url_for('quiz.quiz_selection') }}" class="btn btn-primary rounded-pill py-2 fw-bold shadow-sm">
+                        <i class="bi bi-arrow-repeat me-2"></i>Retake Another Quiz
+                    </a>
+                    <a href="{{ url_for('library.library_index') }}" class="btn btn-outline-secondary rounded-pill py-2">
+                        <i class="bi bi-journal-text me-2"></i>View Library History
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .hover-lift { transition: all 0.25s ease; }
+    .hover-lift:hover { 
+        transform: translateY(-4px); 
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important; 
+    }
+    .list-group-item { transition: background-color 0.2s; }
+    .list-group-item:hover { background-color: #fcfcfc; }
+</style>
 {% endblock %}

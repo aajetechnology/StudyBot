@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 from app.models import db, Lecture, Quiz  
 # FIXED: Import the assistant class instance from the app package
 from utils.summarizer import ai_assistant
+from rapidfuzz import fuzz
 
 quiz_bp = Blueprint('quiz', __name__)
 
@@ -100,6 +101,8 @@ def run_exam(lecture_id, count):
             {{"id": 2, "type": "theory", "q": "Theory question", "keywords": ["key1", "key2"]}}
         ]
     }}
+    CRITICAL: For 'objective' questions, the 'ans' field must contain the FULL TEXT of the correct option, not just 'A' or 'B'.
+    Example: {{"type": "objective", "q": "Color of sky?", "options": ["Blue", "Red"], "ans": "blue"}}
     Text: {lecture.transcript[:6000]} 
     """
 
@@ -139,21 +142,27 @@ def submit_quiz():
     failed_qs = []
 
     for i, q in enumerate(quiz_questions):
-        user_ans = request.form.get(f'ans-{i}', "").strip()
-        user_answers[str(i)] = user_ans
+        user_ans = request.form.get(f'ans-{i}', "").strip().lower()
+        corrent_ans = str(q.get('ans', "")).strip().lower()
+
         
         if q['type'] == 'objective':
-            if user_ans == q.get('ans'):
+            similarity = fuzz.token_set_ratio(user_ans, corrent_ans)
+            if similarity > 90:
                 score += 1
             else:
                 failed_qs.append(q['q'])
+        
         else:
-            # Theory keyword matching
-            if any(word.lower() in user_ans.lower() for word in q.get('keywords', [])):
+            keywords = [k.lower()for k in q.get('keywords', [])]
+            found_keywords =  [word for word in keywords if word in user_ans]
+
+            if len(found_keywords) >= (len(keywords)/2) and len(keywords)>0:
                 score += 1
             else:
                 failed_qs.append(q['q'])
-
+        
+                
     # AI Tutor Feedback
     advice_prompt = f"The student took a quiz and failed these topics: {failed_qs[:3]}. Give a brief Study Tip and a YouTube search term for them."
     try:
@@ -189,4 +198,25 @@ def view_results(quiz_id):
     if not quiz or quiz.user_id != current_user.id:
         flash("Result not found.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
-    return render_template('quiz_results.html', quiz=quiz)
+    questions = json.loads(quiz.questions_json)
+    user_answers = json.loads(quiz.user_answers)
+
+    quiz_details = []
+    for i, q in enumerate(questions):
+        u_ans = user_answers.get(str(i), "No Answer")
+        if q['type'] == 'objective':
+            is_correct = fuzz.token_set_ratio(u_ans.lower(), str(q.get('ans', "")).lower()) > 90
+            correct_display = q.get('ans')
+        else:
+            keywords = [k.lower() for k in q.get('keywords', [])]
+            found = [word for word in keywords if word in u_ans.lower()]
+            is_correct = len(found) >= (len(keywords)/2) and len(keywords)>0
+            correct_display = ", ".join(q.get('keywords', []))
+            quiz_details.append({
+            'question': q['q'],
+            'user_answer': u_ans,
+            'correct_answer': correct_display,
+            'is_correct': is_correct
+        })
+
+    return render_template('quiz_results.html', quiz=quiz, quiz_details=quiz_details)

@@ -96,6 +96,7 @@
                         </li>
                         <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="bi bi-grid-1x2-fill me-2"></i>Dashboard</a></li>
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('quiz.quiz_selection') }}"><i class="bi bi-journal-check me-2"></i>Quiz Center</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('classroom.classroom_selection') }}"><i class="bi bi-journal-check me-2"></i>Class Room</a></li>
                         <li class="nav-item"><a class="btn btn-logout px-3 ms-2" href="/logout">Logout</a></li>
                     {% else %}
                         <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>
@@ -122,6 +123,7 @@
                     </li>
                     <li class="nav-item"><a class="nav-link text-white" href="/dashboard"><i class="bi bi-grid-1x2-fill me-3"></i>Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="{{ url_for('quiz.quiz_selection') }}"><i class="bi bi-journal-check me-3"></i>Quiz Center</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('classroom.classroom_selection') }}"><i class="bi bi-journal-check me-2"></i>Class Room</a></li>
                     <li class="nav-item mt-auto"><a class="btn btn-logout d-block" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
                 {% else %}
                     <li class="nav-item"><a class="nav-link text-white" href="/login">Login</a></li>

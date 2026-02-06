@@ -4,6 +4,8 @@ from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from config import Config
 from app.models import db, User
+from app.routes.library import library_bp
+from app.routes.classroom import classroom_bp
 
 # Initialize extensions globally
 migrate = Migrate()
@@ -31,6 +33,8 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(processor_bp)
     app.register_blueprint(quiz_bp)
+    app.register_blueprint(library_bp)
+    app.register_blueprint(classroom_bp)
 
     @app.route('/')
     def index():

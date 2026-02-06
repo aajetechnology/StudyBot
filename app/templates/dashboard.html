@@ -18,13 +18,25 @@
             </a>
         </div>
         <div class="col-6 col-md-3">
-            <a href="/library" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-all hover-lift">
+            <a href="{{ url_for('library.library_index') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-all hover-lift">
                 <div class="card-body text-center p-4">
                     <div class="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                         <i class="bi bi-folder-fill text-info fs-3"></i>
                     </div>
-                    <h6 class="fw-bold text-dark mb-1">Library</h6>
+                    <h6 class="fw-bold text-dark mb-1">Library</hs6>
                     <small class="text-muted">All documents</small>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <a href="{{ url_for('classroom.classroom_selection') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-all hover-lift">
+                <div class="card-body text-center p-4">
+                    <div class="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
+                        <i class="bi bi-folder-fill text-info fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1">Class mode</hs6>
+                    <small class="text-muted">Let Stud Teach you</small>
                 </div>
             </a>
         </div>
