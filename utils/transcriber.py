@@ -1,10 +1,17 @@
 try:
     import audioop
 except ImportError:
-    import audioop_copy as audioop
-    import sys
-    sys.modules['audioop'] = audioop
+    try:
+        # This looks for the utils/audioop_copy.py file we just made
+        from . import audioop_copy as audioop
+        import sys
+        sys.modules['audioop'] = audioop
+    except ImportError:
+        import audioop_copy as audioop
+        import sys
+        sys.modules['audioop'] = audioop
 
+        
 import os
 import gc
 import threading
@@ -16,21 +23,19 @@ from pydub import AudioSegment
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 def convert_to_mp3(input_path):
-    """Converts any audio file to a standard MP3 for Groq compatibility."""
     try:
-        # Load whatever the user uploaded (m4a, wav, aac, etc.)
         audio = AudioSegment.from_file(input_path)
+        # Convert to Mono and lower sample rate to save massive space
+        audio = audio.set_channels(1).set_frame_rate(16000)
         
-        # Create a path for the new temporary MP3
         mp3_path = input_path.rsplit('.', 1)[0] + "_converted.mp3"
         
-        # Export as standard MP3
-        audio.export(mp3_path, format="mp3", bitrate="128k")
+        # Export at a very low bitrate (32k is fine for voice)
+        audio.export(mp3_path, format="mp3", bitrate="32k")
         return mp3_path
     except Exception as e:
         print(f"Conversion Error: {e}")
-        return input_path # Fallback to original if conversion fails
-
+        return input_path  
 def transcribe_audio_stream(file_path):
     gc.collect()
     result_queue = queue.Queue()
