@@ -19,49 +19,42 @@ class StudyAI:
         self.model = "llama-3.3-70b-versatile"
 
     def get_study_notes(self, transcript):
-        """
-        Generates structured study notes using a GENERATOR to prevent timeouts.
-        """
         if not transcript or len(transcript.strip()) < 50:
-            yield "The provided content was too brief to generate meaningful study notes.", None
+            yield "Content too brief...", "The provided content was too brief."
             return
 
         truncated_transcript = transcript[:15000] 
+        full_response = []
 
         try:
             logger.info("Starting Streaming AI generation...")
-            
-            # Switch stream=True
             completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {
-                        "role": "system", 
-                        "content": (
-                            "You are a professional academic tutor. Create highly structured study notes. "
-                            "Use Markdown formatting, bold key terms, and include a summary section."
-                        )
-                    },
-                    {"role": "user", "content": f"Please summarize this lecture transcript:\n\n{truncated_transcript}"}
+                    {"role": "system", "content": "You are a professional academic tutor..."},
+                    {"role": "user", "content": f"Summarize this:\n\n{truncated_transcript}"}
                 ],
                 temperature=0.5,
                 max_tokens=2048,
-                stream=True  # CRITICAL: Now streaming
+                stream=True
             )
 
-            full_response = []
             for chunk in completion:
                 content = chunk.choices[0].delta.content
                 if content:
                     full_response.append(content)
-                    # Yielding None as the final flag so process_log knows this is a log/pulse
                     yield content, None
 
-            # Final yield with the full concatenated string for the DB/File saving
-            yield None, "".join(full_response)
+            # CRITICAL: If the AI returned nothing, don't leave it as None
+            final_summary = "".join(full_response)
+            if not final_summary:
+                final_summary = "AI was unable to generate a summary for this transcript."
+            
+            yield None, final_summary
 
         except Exception as e:
             logger.error(f"Groq API Critical Error: {str(e)}")
-            yield f"System busy: {str(e)}", None
+            # Even on error, return a string so the DB save doesn't crash
+            yield None, f"Summary Generation Error: {str(e)}"
 
 ai_assistant = StudyAI()

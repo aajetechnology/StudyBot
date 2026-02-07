@@ -1,22 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-5">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} alert-dismissible fade show rounded-4 shadow mb-4">
+            {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
     <div class="row justify-content-center">
         <div class="col-md-8">
             <h2 class="fw-bold mb-4 text-center">Preparation Portal</h2>
             <div class="card border-0 shadow-lg p-4 rounded-4">
                 
-                <div class="btn-group w-100 mb-4 p-1 bg-light rounded-pill" role="group">
-                    <input type="radio" class="btn-check" name="source_type" id="use_existing" checked onclick="toggleSource('existing')">
-                    <label class="btn btn-outline-primary rounded-pill border-0" for="use_existing">📂 From My Library</label>
+                <div class="btn-group w-100 mb-4 p-1 bg-light rounded-pill">
+                    <input type="radio" class="btn-check" name="source_toggle" id="mode_library" checked onclick="toggleMode('library')">
+                    <label class="btn btn-outline-primary rounded-pill border-0" for="mode_library">📂 From My Library</label>
 
-                    <input type="radio" class="btn-check" name="source_type" id="use_upload" onclick="toggleSource('upload')">
-                    <label class="btn btn-outline-primary rounded-pill border-0" for="use_upload">📤 New Upload</label>
+                    <input type="radio" class="btn-check" name="source_toggle" id="mode_upload" onclick="toggleMode('upload')">
+                    <label class="btn btn-outline-primary rounded-pill border-0" for="mode_upload">📤 New Upload</label>
                 </div>
 
-                <form action="{{ url_for('quiz.start_quiz') }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ url_for('quiz.start_quiz') }}" method="POST" enctype="multipart/form-data" id="quizForm">
                     
-                    <div id="existing_section" class="mb-4">
+                    <div id="section_library" class="mb-4">
                         <label class="form-label fw-bold text-primary">Select Material</label>
                         <select name="lecture_id" id="lecture_select" class="form-select border-0 bg-light py-2">
                             <option value="" disabled selected>Choose a previous lecture...</option>
@@ -26,10 +36,12 @@
                         </select>
                     </div>
 
-                    <div id="upload_section" class="mb-4 d-none">
-                        <label class="form-label fw-bold text-primary">Upload Document (PDF, DOCX, TXT)</label>
-                        <input type="file" name="doc_file" id="file_input" class="form-control border-0 bg-light py-2" accept=".pdf,.docx,.txt" disabled>
-                        <small class="text-muted">Maximum file size: 10MB</small>
+                    <div id="section_upload" class="mb-4 d-none">
+                        <label class="form-label fw-bold text-primary">Upload PDF or Photos</label>
+                        <input type="file" name="doc_file" id="file_input" 
+                               class="form-control border-0 bg-light py-2" 
+                               accept=".pdf,.jpg,.jpeg,.png" multiple disabled>
+                        <small class="text-muted">Supports multiple photos or documents.</small>
                     </div>
 
                     <hr class="my-4 opacity-25">
@@ -39,16 +51,25 @@
                         <div class="d-flex justify-content-between gap-2">
                             {% for count in [10, 20, 30, 40, 50] %}
                             <input type="radio" class="btn-check" name="count" id="btn{{count}}" value="{{count}}" {% if count == 10 %}checked{% endif %}>
-                            <label class="btn btn-outline-dark flex-fill" for="btn{{count}}">{{count}}</label>
+                            <label class="btn btn-outline-dark flex-fill rounded-3" for="btn{{count}}">{{count}}</label>
                             {% endfor %}
-                        </div>
-                        <div class="alert alert-info mt-3 border-0 py-2 small">
-                            <i class="bi bi-clock me-2"></i>90s (Theory) or 180s (Calculations) per question.
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow">
-                         Start Examination
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Study Guide Format</label>
+                        <select name="format" class="form-select border-0 bg-light py-2">
+                            <option value="pdf" selected>PDF Document (.pdf)</option>
+                            <option value="docx">Microsoft Word (.docx)</option>
+                        </select>
+                        <div class="alert alert-info mt-3 border-0 py-2 small">
+                            <i class="bi bi-cpu me-2"></i>AI Professor will generate questions based on this material.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow" id="submitBtn">
+                         <span id="btnText">Start Examination</span>
+                         <span id="btnSpinner" class="spinner-border spinner-border-sm d-none"></span>
                     </button>
                 </form>
             </div>
@@ -56,30 +77,35 @@
     </div>
 </div>
 
-
-
 <script>
-function toggleSource(type) {
-    const existingSec = document.getElementById('existing_section');
-    const uploadSec = document.getElementById('upload_section');
-    const lectureSelect = document.getElementById('lecture_select');
-    const fileInput = document.getElementById('file_input');
+function toggleMode(mode) {
+    const libSec = document.getElementById('section_library');
+    const upSec = document.getElementById('section_upload');
+    const libInput = document.getElementById('lecture_select');
+    const upInput = document.getElementById('file_input');
 
-    if (type === 'existing') {
-        existingSec.classList.remove('d-none');
-        uploadSec.classList.add('d-none');
-        
-        // Enable select, Disable file input
-        lectureSelect.disabled = false;
-        fileInput.disabled = true;
+    if (mode === 'library') {
+        libSec.classList.remove('d-none');
+        upSec.classList.add('d-none');
+        libInput.disabled = false;
+        upInput.disabled = true;
     } else {
-        existingSec.classList.add('d-none');
-        uploadSec.classList.remove('d-none');
-        
-        // Disable select, Enable file input
-        lectureSelect.disabled = true;
-        fileInput.disabled = false;
+        libSec.classList.add('d-none');
+        upSec.classList.remove('d-none');
+        libInput.disabled = true;
+        upInput.disabled = false;
     }
 }
+
+// Loading State Logic
+document.getElementById('quizForm').onsubmit = function() {
+    const btn = document.getElementById('submitBtn');
+    const text = document.getElementById('btnText');
+    const spinner = document.getElementById('btnSpinner');
+    
+    btn.classList.add('disabled');
+    text.innerText = "AI Professor is Analyzing...";
+    spinner.classList.remove('d-none');
+};
 </script>
 {% endblock %}

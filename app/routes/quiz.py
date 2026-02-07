@@ -50,59 +50,77 @@ def quiz_selection():
     lectures = Lecture.query.filter_by(user_id=current_user.id).order_by(Lecture.timestamp.desc()).all()
     return render_template('quiz_selection.html', lectures=lectures)
 
-@quiz_bp.route('/start-quiz', methods=['POST'])
+
+
+
+@quiz_bp.route('/start-quiz', methods=['GET', 'POST'])
 @login_required
 def start_quiz():
+    if request.method == 'GET':
+        return redirect(url_for('quiz.quiz_selection'))
+
+    # --- CAPTURE FORM DATA ---
+    # Default to 10 questions and 'pdf' if not provided
+    num_questions = request.form.get('count', 10)
+    export_format = request.form.get('format', 'pdf')
+    lecture_id = request.form.get('lecture_id')
+
+    # --- MODE 1: FROM LIBRARY ---
+    if lecture_id:
+        current_app.logger.info(f"User {current_user.id} starting quiz from existing lecture: {lecture_id}")
+        # Pass the count to the run-exam route
+        return redirect(url_for('quiz.run_exam', lecture_id=lecture_id, count=num_questions))
+
+    # --- MODE 2: NEW UPLOAD ---
     files = request.files.getlist('doc_file')
     
-    if not files or files[0].filename == '':
-        flash("Please upload at least one PDF or photo of your notes!", "warning")
-        return redirect(request.url)
+    if not files or all(f.filename == '' for f in files):
+        flash("Please upload a document/photo or select from your library!", "warning")
+        return redirect(url_for('quiz.quiz_selection'))
 
     combined_text = ""
     for file in files:
+        if file.filename == '': continue
+        
         filename = file.filename.lower()
-        
-        # --- PDF EXTRACTION ---
+        file.seek(0) 
+
+        # PDF Extraction
         if filename.endswith('.pdf'):
-            reader = PdfReader(file)
-            page_text = ""
-            for page in reader.pages:
-                page_text += page.extract_text() or ""
-            
-            if len(page_text.strip()) < 50:
-                combined_text += "[Scanned PDF detected - AI will summarize context]\n"
-            else:
-                combined_text += page_text + "\n"
-        
-        # --- IMAGE/PHOTO EXTRACTION ---
-        elif filename.endswith(('.png', '.jpg', '.jpeg')):
-            image_bytes = file.read()
-            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
             try:
-                vision_completion = client.chat.completions.create(
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": "Extract all academic text from this image perfectly so I can teach a student from it."},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
-                        ]
-                    }],
+                reader = PdfReader(file)
+                for page in reader.pages:
+                    combined_text += (page.extract_text() or "") + "\n"
+            except Exception as e:
+                current_app.logger.error(f"PDF Error: {e}")
+
+        # Image Extraction (Vision)
+        elif filename.endswith(('.png', '.jpg', '.jpeg')):
+            try:
+                image_bytes = file.read()
+                encoded = base64.b64encode(image_bytes).decode('utf-8')
+                res = client.chat.completions.create(
+                    messages=[{"role": "user", "content": [
+                        {"type": "text", "text": "Extract all academic text from this image perfectly so I can teach a student from it."},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded}"}}
+                    ]}],
                     model="llama-3.2-11b-vision-preview",
                 )
-                combined_text += vision_completion.choices[0].message.content + "\n"
+                combined_text += res.choices[0].message.content + "\n"
             except Exception as e:
                 current_app.logger.error(f"Vision Error: {e}")
 
-    # Safety Check: Did we get anything?
+    # Final Save Logic
     if len(combined_text.strip()) < 20:
-        flash("The AI couldn't read the notes. Please ensure the photos are clear!", "danger")
+        flash("The AI couldn't read those notes. Try a clearer file!", "danger")
         return redirect(url_for('quiz.quiz_selection'))
 
-    # FIXED: Using 'transcript' instead of 'content' to match your Model
+    # Create the Lecture record including the captured format and a default summary
     new_lecture = Lecture(
         title=files[0].filename[:50],
-        transcript=combined_text,  # <--- This matches your SQLAlchemy column
+        transcript=combined_text,
+        summary="Automated notes from document upload.", # Solves NotNullViolation
+        output_format=export_format, # Saves the user's choice (pdf/docx)
         user_id=current_user.id,
         timestamp=datetime.now(timezone.utc)
     )
@@ -110,13 +128,14 @@ def start_quiz():
     try:
         db.session.add(new_lecture)
         db.session.commit()
+        # Direct the user straight to the exam with the chosen question count
+        return redirect(url_for('quiz.run_exam', lecture_id=new_lecture.id, count=num_questions))
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Database Save Error: {e}")
-        flash("Failed to save lecture to database.", "danger")
+        current_app.logger.error(f"DB Error: {str(e)}")
+        flash("Database error occurred while saving your notes.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
 
-    return redirect(url_for('classroom.init_class', lecture_id=new_lecture.id))
 
 
 @quiz_bp.route('/run-exam/<int:lecture_id>/<int:count>')

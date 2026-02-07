@@ -31,7 +31,7 @@ class Lecture(db.Model):
         timestamp = db.Column(db.DateTime, nullable=False)
 
         transcript = db.Column(db.Text)
-        summary = db.Column(db.Text, nullable=False)
+        summary = db.Column(db.Text, nullable=True)
 
         original_filename = db.Column(db.String(100))
         output_format = db.Column(db.String(10))
