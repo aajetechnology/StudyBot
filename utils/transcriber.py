@@ -2,49 +2,70 @@ try:
     import audioop
 except ImportError:
     try:
-        # This looks for the utils/audioop_copy.py file we just made
+        # This looks for the utils/audioop_copy.py file in the same directory
         from . import audioop_copy as audioop
         import sys
         sys.modules['audioop'] = audioop
     except ImportError:
+        # Fallback for different directory structures
         import audioop_copy as audioop
         import sys
         sys.modules['audioop'] = audioop
 
-        
 import os
 import gc
 import threading
 import queue
 import time
+import subprocess
 from groq import Groq
-from pydub import AudioSegment
+
+# We still import pydub just in case, but we avoid using it for the main conversion
+# to save memory on the Render Free Tier.
+try:
+    from pydub import AudioSegment
+except ImportError:
+    pass
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 def convert_to_mp3(input_path):
+    """
+    Memory-efficient conversion using FFmpeg streaming.
+    This prevents 'Connection Reset' errors on Render by not loading 
+    the audio into RAM.
+    """
     try:
-        audio = AudioSegment.from_file(input_path)
-        # Convert to Mono and lower sample rate to save massive space
-        audio = audio.set_channels(1).set_frame_rate(16000)
-        
         mp3_path = input_path.rsplit('.', 1)[0] + "_converted.mp3"
         
-        # Export at a very low bitrate (32k is fine for voice)
-        audio.export(mp3_path, format="mp3", bitrate="32k")
+        # FFmpeg command: Mono, 16000Hz, 32k bitrate (Highly compressed for Groq)
+        command = [
+            'ffmpeg', '-y', '-i', input_path,
+            '-ac', '1',                # Mono
+            '-ar', '16000',            # 16kHz sample rate
+            '-b:a', '32k',             # 32kbps bitrate
+            mp3_path
+        ]
+        
+        # Run the conversion as a background system process
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return mp3_path
     except Exception as e:
-        print(f"Conversion Error: {e}")
+        print(f"Streaming Conversion Error: {e}")
+        # If FFmpeg fails, we return the original path as a fallback
         return input_path  
+
 def transcribe_audio_stream(file_path):
     gc.collect()
     result_queue = queue.Queue()
 
     # --- STEP 1: UNIVERSAL CONVERSION ---
     yield ">>> PRE-PROCESSING AUDIO FOR UNIVERSAL SUPPORT...", None
+    
+    # We use the new streaming converter to keep RAM usage near zero
     final_file_to_send = convert_to_mp3(file_path)
     
-    # Use a clean metadata name to avoid the 400 error
+    # Use a clean metadata name to avoid Groq 400 errors
     safe_name = "lecture_audio.mp3"
 
     def perform_transcription():
@@ -59,7 +80,7 @@ def transcribe_audio_stream(file_path):
         except Exception as e:
             result_queue.put(("ERROR", str(e)))
 
-    # Start Groq
+    # Start Groq Thread
     thread = threading.Thread(target=perform_transcription)
     thread.daemon = True
     thread.start()
@@ -71,9 +92,12 @@ def transcribe_audio_stream(file_path):
 
     status, data = result_queue.get()
 
-    # Cleanup the temporary MP3 file if we created one
+    # Cleanup the temporary MP3 file
     if final_file_to_send != file_path and os.path.exists(final_file_to_send):
-        os.remove(final_file_to_send)
+        try:
+            os.remove(final_file_to_send)
+        except:
+            pass
 
     if status == "ERROR":
         yield f"❌ Groq API Error: {data}", None
@@ -91,7 +115,7 @@ def transcribe_audio_stream(file_path):
             line = f"{timestamp} {text.strip()}"
             yield line, None
             full_transcript.append(line)
-            time.sleep(0.04) # Simulate live typing
+            time.sleep(0.04) # Simulated live typing effect
 
     yield None, "\n".join(full_transcript)
     gc.collect()
