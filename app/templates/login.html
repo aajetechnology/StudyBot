@@ -6,7 +6,16 @@
 <div class="container">
     <div class="row justify-content-center align-items-center py-5" style="min-height: 80vh;">
         <div class="col-11 col-md-6 col-lg-4">
-            <div class="card shadow-lg border-0 rounded-4">
+            
+            <div id="tg-loader" class="text-center" style="display: none;">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h4 class="fw-bold">Authenticating...</h4>
+                <p class="text-muted">Connecting your Telegram account to StudBot</p>
+            </div>
+
+            <div id="web-login-card" class="card shadow-lg border-0 rounded-4">
                 <div class="card-body p-4 p-md-5">
                     <div class="text-center mb-4">
                         <h2 class="fw-bold text-primary">StudBot</h2>
@@ -31,7 +40,78 @@
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+    /* Adopt Telegram's Dark Theme Colors */
+    body.tg-dark {
+        background-color: #17212b !important;
+        color: #ffffff !important;
+    }
+    body.tg-dark .card {
+        background-color: #242f3d !important;
+        color: white !important;
+        border: 1px solid #374151;
+    }
+    body.tg-dark .form-control {
+        background-color: #1c2733 !important;
+        border-color: #374151 !important;
+        color: white !important;
+    }
+    body.tg-dark .form-control:focus {
+        background-color: #1c2733 !important;
+        color: white !important;
+    }
+    body.tg-dark label {
+        color: #9ca3af !important;
+    }
+</style>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    // 1. Theme Adoption: Immediate check
+    if (tg.colorScheme === 'dark') {
+        document.body.classList.add('tg-dark');
+    }
+
+    // 2. Telegram Auto-Login Logic
+    if (tg.initData) {
+        // Hide the web form and show the loader for Telegram users
+        document.getElementById('web-login-card').style.display = 'none';
+        document.getElementById('tg-loader').style.display = 'block';
+
+        fetch("{{ url_for('auth.telegram_login') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ initData: tg.initData })
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Auth Failed");
+            return res.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Redirect to dashboard
+                window.location.href = data.redirect;
+            } else {
+                // If TG auth fails for some reason, show the form again
+                document.getElementById('web-login-card').style.display = 'block';
+                document.getElementById('tg-loader').style.display = 'none';
+                alert("Telegram Auth failed. Please login manually.");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('web-login-card').style.display = 'block';
+            document.getElementById('tg-loader').style.display = 'none';
+        });
+    }
+</script>
 {% endblock %}

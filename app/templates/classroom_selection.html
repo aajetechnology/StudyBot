@@ -59,7 +59,7 @@
                     <h4 class="fw-bold mb-3">Upload Notes</h4>
                     <p class="opacity-75 mb-4">Select multiple images or a scanned PDF. AI Vision will extract the text for you.</p>
                     
-                    <form action="{{ url_for('quiz.start_quiz') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                    <form action="{{ url_for('classroom.start_class') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
                         <div class="mb-4">
                             <label class="form-label small fw-bold text-uppercase" style="letter-spacing: 1px;">Files (PDF or Images)</label>
                             <input type="file" name="doc_file" id="fileInput"

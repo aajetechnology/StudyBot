@@ -65,6 +65,53 @@ def classroom_selection():
     lectures = Lecture.query.filter_by(user_id=current_user.id).order_by(Lecture.timestamp.desc()).all()
     return render_template('classroom_selection.html', lectures=lectures)
 
+
+
+from datetime import datetime, timezone
+
+@classroom_bp.route('/start-class', methods=['POST'])
+@login_required
+def start_class():
+    files = request.files.getlist('doc_file')
+    
+    if not files or all(f.filename == '' for f in files):
+        flash("Please upload a document to start the class.", "warning")
+        return redirect(url_for('classroom.classroom_selection'))
+
+    combined_text = ""
+    for file in files:
+        if file.filename == '': continue
+        try:
+            # We use the utility function you already have in this file
+            text = extract_text_from_file(file)
+            combined_text += text + "\n"
+        except Exception as e:
+            print(f"Extraction error: {e}")
+
+    if len(combined_text.strip()) < 20:
+        flash("The AI couldn't read those notes. Try a clearer file!", "danger")
+        return redirect(url_for('classroom.classroom_selection'))
+
+    # Create the Lecture record
+    new_lecture = Lecture(
+        title=files[0].filename[:50],
+        transcript=combined_text,
+        summary="Classroom notes generated from upload.",
+        user_id=current_user.id,
+        timestamp=datetime.now(timezone.utc)
+    )
+    
+    try:
+        db.session.add(new_lecture)
+        db.session.commit()
+        # SUCCESS: Now send them to the Classroom Init logic
+        return redirect(url_for('classroom.init_class', lecture_id=new_lecture.id))
+    except Exception as e:
+        db.session.rollback()
+        flash("Database error occurred.", "danger")
+        return redirect(url_for('classroom.classroom_selection'))
+    
+    
 @classroom_bp.route('/init-class/<int:lecture_id>')
 @login_required
 def init_class(lecture_id):
