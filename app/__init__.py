@@ -7,6 +7,7 @@ from app.models import db, User
 from app.routes.library import library_bp
 from app.routes.classroom import classroom_bp
 
+
 # Initialize extensions globally
 migrate = Migrate()
 login_manager = LoginManager()
@@ -29,12 +30,14 @@ def create_app(config_class=Config):
     from app.routes.auth import auth_bp
     from app.routes.processor import processor_bp
     from app.routes.quiz import quiz_bp
+    from app.routes.chatfroff import chatproff_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(processor_bp)
     app.register_blueprint(quiz_bp, url_prefix='/quiz')
     app.register_blueprint(library_bp)
     app.register_blueprint(classroom_bp)
+    app.register_blueprint(chatproff_bp)
 
     @app.route('/')
     def index():

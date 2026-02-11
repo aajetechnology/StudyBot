@@ -1,81 +1,175 @@
 {% extends "base.html" %}
+{% block title %}Preparation Portal{% endblock %}
+
 {% block content %}
-<div class="container py-5">
+<div class="container py-3 px-2 px-md-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for cat, msg in messages %}
-          <div class="alert alert-{{ cat }} alert-dismissible fade show rounded-4 shadow mb-4">
-            {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          <div class="alert alert-{{ cat }} border-0 rounded-4 shadow-sm mb-3 small d-flex align-items-center">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            {{ msg }}
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
           </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
 
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <h2 class="fw-bold mb-4 text-center">Preparation Portal</h2>
-            <div class="card border-0 shadow-lg p-4 rounded-4">
-                
-                <div class="btn-group w-100 mb-4 p-1 bg-light rounded-pill">
-                    <input type="radio" class="btn-check" name="source_toggle" id="mode_library" checked onclick="toggleMode('library')">
-                    <label class="btn btn-outline-primary rounded-pill border-0" for="mode_library">📂 From My Library</label>
-
-                    <input type="radio" class="btn-check" name="source_toggle" id="mode_upload" onclick="toggleMode('upload')">
-                    <label class="btn btn-outline-primary rounded-pill border-0" for="mode_upload">📤 New Upload</label>
+        <div class="col-12 col-md-8">
+            <div class="text-center mb-4 pt-2">
+                <div class="icon-circle bg-primary bg-opacity-10 mb-3 mx-auto">
+                    <i class="bi bi-journal-check text-primary fs-2"></i>
                 </div>
+                <h4 class="fw-bold text-tg">Quiz Preparation</h4>
+                <p class="text-muted small">Choose your source and set your exam length.</p>
+            </div>
 
-                <form action="{{ url_for('quiz.start_quiz') }}" method="POST" enctype="multipart/form-data" id="quizForm">
+            <div class="card border-0 shadow-sm rounded-4 tg-card">
+                <div class="card-body p-3 p-md-4">
                     
-                    <div id="section_library" class="mb-4">
-                        <label class="form-label fw-bold text-primary">Select Material</label>
-                        <select name="lecture_id" id="lecture_select" class="form-select border-0 bg-light py-2">
-                            <option value="" disabled selected>Choose a previous lecture...</option>
-                            {% for lecture in lectures %}
-                            <option value="{{ lecture.id }}">{{ lecture.title }}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="tg-segmented-control mb-4">
+                        <input type="radio" name="source_toggle" id="mode_library" checked onclick="toggleMode('library')">
+                        <label for="mode_library">📂 From Library</label>
+
+                        <input type="radio" name="source_toggle" id="mode_upload" onclick="toggleMode('upload')">
+                        <label for="mode_upload">📤 New Upload</label>
+                        
+                        <div class="tg-selection-slider"></div>
                     </div>
 
-                    <div id="section_upload" class="mb-4 d-none">
-                        <label class="form-label fw-bold text-primary">Upload PDF or Photos</label>
-                        <input type="file" name="doc_file" id="file_input" 
-                               class="form-control border-0 bg-light py-2" 
-                               accept=".pdf,.jpg,.jpeg,.png" multiple disabled>
-                        <small class="text-muted">Supports multiple photos or documents.</small>
-                    </div>
-
-                    <hr class="my-4 opacity-25">
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Number of Questions</label>
-                        <div class="d-flex justify-content-between gap-2">
-                            {% for count in [10, 20, 30, 40, 50] %}
-                            <input type="radio" class="btn-check" name="count" id="btn{{count}}" value="{{count}}" {% if count == 10 %}checked{% endif %}>
-                            <label class="btn btn-outline-dark flex-fill rounded-3" for="btn{{count}}">{{count}}</label>
-                            {% endfor %}
+                    <form action="{{ url_for('quiz.start_quiz') }}" method="POST" enctype="multipart/form-data" id="quizForm">
+                        
+                        <div id="section_library" class="mb-4">
+                            <label class="form-label small fw-bold text-uppercase text-primary letter-spacing-1">Select Material</label>
+                            <select name="lecture_id" id="lecture_select" class="form-select tg-input py-3">
+                                <option value="" disabled selected>Choose a saved lecture...</option>
+                                {% for lecture in lectures %}
+                                <option value="{{ lecture.id }}">{{ lecture.title }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                    </div>
 
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Study Guide Format</label>
-                        <select name="format" class="form-select border-0 bg-light py-2">
-                            <option value="pdf" selected>PDF Document (.pdf)</option>
-                            <option value="docx">Microsoft Word (.docx)</option>
-                        </select>
-                        <div class="alert alert-info mt-3 border-0 py-2 small">
-                            <i class="bi bi-cpu me-2"></i>AI Professor will generate questions based on this material.
+                        <div id="section_upload" class="mb-4 d-none">
+                            <label class="form-label small fw-bold text-uppercase text-primary letter-spacing-1">Upload Source</label>
+                            <input type="file" name="doc_file" id="file_input" 
+                                   class="form-control tg-input py-2" 
+                                   multiple accept=".pdf,.jpg,.jpeg,.png" disabled>
+                            <div class="mt-2 text-muted" style="font-size: 0.75rem;">
+                                <i class="bi bi-info-circle me-1"></i> Supports PDFs and photos of notes.
+                            </div>
                         </div>
-                    </div>
 
-                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow" id="submitBtn">
-                         <span id="btnText">Start Examination</span>
-                         <span id="btnSpinner" class="spinner-border spinner-border-sm d-none"></span>
-                    </button>
-                </form>
+                        <hr class="my-4 opacity-10">
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-uppercase text-tg opacity-75 letter-spacing-1">Question Count</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for count in [10, 20, 30, 40, 50] %}
+                                <div class="flex-fill">
+                                    <input type="radio" class="btn-check" name="count" id="btn{{count}}" value="{{count}}" {% if count == 10 %}checked{% endif %}>
+                                    <label class="btn btn-outline-tg-count w-100 py-2 fw-bold" for="btn{{count}}">{{count}}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-uppercase text-tg opacity-75 letter-spacing-1">Export Format</label>
+                            <div class="d-flex gap-2">
+                                <select name="format" class="form-select tg-input">
+                                    <option value="pdf" selected>Portable Document (PDF)</option>
+                                    <option value="docx">Word Document (DOCX)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="alert bg-primary-soft text-primary border-0 rounded-4 py-3 mb-4 small d-flex align-items-center">
+                            <i class="bi bi-stars fs-5 me-3"></i>
+                            <span>Our AI will generate unique questions based on your material.</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill py-3 shadow" id="submitBtn">
+                             <span id="btnText">Start Examination</span>
+                             <span id="btnSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    /* TG UI Constants */
+    .text-tg { color: var(--tg-text) !important; }
+    .tg-card { background-color: var(--tg-card) !important; }
+    .bg-primary-soft { background: rgba(13, 110, 253, 0.1); }
+    .letter-spacing-1 { letter-spacing: 0.5px; }
+
+    /* Custom Segmented Control (Telegram Style) */
+    .tg-segmented-control {
+        display: flex;
+        position: relative;
+        background: rgba(120, 120, 120, 0.1);
+        padding: 2px;
+        border-radius: 12px;
+        z-index: 1;
+    }
+    .tg-segmented-control input { display: none; }
+    .tg-segmented-control label {
+        flex: 1;
+        text-align: center;
+        padding: 8px 0;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--tg-hint);
+        cursor: pointer;
+        z-index: 2;
+        transition: color 0.3s;
+    }
+    .tg-segmented-control input:checked + label { color: var(--tg-text); }
+    .tg-selection-slider {
+        position: absolute;
+        width: calc(50% - 4px);
+        height: calc(100% - 4px);
+        background: var(--tg-card);
+        border-radius: 10px;
+        top: 2px;
+        left: 2px;
+        transition: transform 0.3s ease;
+        z-index: 1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #mode_upload:checked ~ .tg-selection-slider { transform: translateX(100%); }
+
+    /* Input Theming */
+    .tg-input {
+        background-color: var(--tg-bg) !important;
+        border: 1px solid rgba(120, 120, 120, 0.2) !important;
+        color: var(--tg-text) !important;
+        border-radius: 12px;
+    }
+
+    /* Question Count Buttons */
+    .btn-outline-tg-count {
+        border-color: rgba(120, 120, 120, 0.2);
+        color: var(--tg-hint);
+        background: transparent;
+        border-radius: 10px;
+    }
+    .btn-check:checked + .btn-outline-tg-count {
+        background-color: var(--tg-link) !important;
+        border-color: var(--tg-link) !important;
+        color: white !important;
+    }
+
+    .icon-circle {
+        width: 64px; height: 64px;
+        border-radius: 20px;
+        display: flex; align-items: center; justify-content: center;
+    }
+</style>
 
 <script>
 function toggleMode(mode) {
@@ -97,14 +191,13 @@ function toggleMode(mode) {
     }
 }
 
-// Loading State Logic
 document.getElementById('quizForm').onsubmit = function() {
     const btn = document.getElementById('submitBtn');
     const text = document.getElementById('btnText');
     const spinner = document.getElementById('btnSpinner');
     
     btn.classList.add('disabled');
-    text.innerText = "AI Professor is Analyzing...";
+    text.innerText = "Processing Material...";
     spinner.classList.remove('d-none');
 };
 </script>

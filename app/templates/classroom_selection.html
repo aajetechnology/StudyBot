@@ -1,75 +1,38 @@
 {% extends "base.html" %}
-{% block title %}Start Learning - Classroom{% endblock %}
+{% block title %}Classroom Selection{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="text-center mb-5">
-        <div class="bg-primary bg-opacity-10 d-inline-block p-4 rounded-circle mb-3">
-            <i class="bi bi-mortarboard-fill text-primary fs-1"></i>
+<div class="container py-3 px-2 px-md-4">
+    <div class="text-center mb-4 pt-2">
+        <div class="bg-primary bg-opacity-10 d-inline-block p-3 rounded-circle mb-2">
+            <i class="bi bi-mortarboard-fill text-primary fs-2"></i>
         </div>
-        <h2 class="fw-bold">Class Mode</h2>
-        <p class="text-muted mx-auto" style="max-width: 600px;">
-            Snap your notes or upload handout photos. Our AI Professor reads handwriting and scanned PDFs to build your custom course.
+        <h4 class="fw-bold text-tg">Classroom Mode</h4>
+        <p class="text-muted small mx-auto" style="max-width: 320px;">
+            Snap notes or upload PDFs. Our AI Professor will build your custom course.
         </p>
     </div>
 
-    <div class="row g-4 justify-content-center">
-        <div class="col-lg-6">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
+    <div class="row g-3">
+        <div class="col-12 order-1 order-lg-2">
+            <div class="card border-0 shadow-sm rounded-4 bg-primary text-white overflow-hidden mb-2">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4">
-                        <i class="bi bi-clock-history me-2 text-primary"></i>Recent Lectures
-                    </h5>
-                    
-                    <div class="list-group list-group-flush overflow-auto" style="max-height: 400px;">
-                        {% for lecture in lectures %}
-                        <div class="list-group-item border-0 px-0 mb-2">
-                            <div class="d-flex align-items-center justify-content-between p-3 rounded-3 bg-light hover-shadow transition-all">
-                                <div class="d-flex align-items-center overflow-hidden">
-                                    {% if lecture.transcript and ("image" in lecture.transcript|lower or "transcription" in lecture.transcript|lower) %}
-                                        <i class="bi bi-camera-fill fs-4 text-primary me-3"></i>
-                                    {% else %}
-                                        <i class="bi bi-file-earmark-text-fill fs-4 text-danger me-3"></i>
-                                    {% endif %}
-                                    <div class="text-truncate">
-                                        <div class="fw-bold text-dark text-truncate">{{ lecture.title }}</div>
-                                        <small class="text-muted">{{ lecture.timestamp.strftime('%d %b, %Y') }}</small>
-                                    </div>
-                                </div>
-                                <a href="{{ url_for('classroom.init_class', lecture_id=lecture.id) }}" 
-                                   class="btn btn-primary btn-sm rounded-pill px-4 ms-3">
-                                    Open Class
-                                </a>
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="text-center py-5">
-                            <i class="bi bi-cloud-upload fs-2 text-muted d-block mb-2"></i>
-                            <p class="text-muted small">Your shelf is empty. Upload a note to begin!</p>
-                        </div>
-                        {% endfor %}
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-plus-circle-dotted fs-3 me-2"></i>
+                        <h5 class="fw-bold mb-0">New Lecture</h5>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-5">
-            <div class="card border-0 shadow-sm rounded-4 bg-primary text-white h-100">
-                <div class="card-body p-5 d-flex flex-column justify-content-center">
-                    <h4 class="fw-bold mb-3">Upload Notes</h4>
-                    <p class="opacity-75 mb-4">Select multiple images or a scanned PDF. AI Vision will extract the text for you.</p>
+                    <p class="small opacity-75 mb-4">Upload images or PDFs to start learning.</p>
                     
                     <form action="{{ url_for('classroom.start_class') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
-                        <div class="mb-4">
-                            <label class="form-label small fw-bold text-uppercase" style="letter-spacing: 1px;">Files (PDF or Images)</label>
+                        <div class="mb-3">
                             <input type="file" name="doc_file" id="fileInput"
-                                   class="form-control bg-white text-dark rounded-pill shadow-none border-0" 
+                                   class="form-control tg-file-input" 
                                    multiple 
                                    accept=".pdf, .docx, .txt, image/*" required>
                         </div>
 
-                        <div id="previewContainer" class="d-flex flex-wrap gap-2 mb-3 d-none bg-white bg-opacity-10 p-2 rounded-3">
-                            </div>
+                        <div id="previewContainer" class="d-flex flex-wrap gap-2 mb-3 d-none bg-white bg-opacity-10 p-2 rounded-3 border border-white border-opacity-10">
+                        </div>
 
                         <div class="d-grid">
                             <button type="submit" class="btn btn-light rounded-pill fw-bold py-3 shadow-sm" id="submitBtn">
@@ -77,9 +40,44 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 order-2 order-lg-1">
+            <div class="card border-0 shadow-sm rounded-4 mb-5">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-4 text-tg text-uppercase letter-spacing-1">
+                        <i class="bi bi-clock-history me-2 text-primary"></i>Your Lectures
+                    </h6>
                     
-                    <div class="mt-4 pt-4 border-top border-white border-opacity-10 text-center">
-                        <small class="opacity-50">Supported: Snapped Photos, Handouts, Scanned PDFs</small>
+                    <div class="list-group list-group-flush">
+                        {% for lecture in lectures %}
+                        <div class="list-group-item bg-transparent border-0 px-0 py-3 d-flex align-items-center justify-content-between border-bottom-tg">
+                            <div class="d-flex align-items-center overflow-hidden">
+                                <div class="icon-box-tg me-3">
+                                    {% if lecture.transcript and ("image" in lecture.transcript|lower or "transcription" in lecture.transcript|lower) %}
+                                        <i class="bi bi-camera-fill text-primary"></i>
+                                    {% else %}
+                                        <i class="bi bi-file-earmark-text-fill text-danger"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="text-truncate">
+                                    <div class="fw-bold text-tg text-truncate" style="max-width: 160px;">{{ lecture.title }}</div>
+                                    <small class="text-muted">{{ lecture.timestamp.strftime('%d %b, %Y') }}</small>
+                                </div>
+                            </div>
+                            <a href="{{ url_for('classroom.init_class', lecture_id=lecture.id) }}" 
+                               class="btn btn-primary-soft btn-sm rounded-pill px-3 fw-bold">
+                                Open
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-cloud-upload fs-1 text-muted d-block mb-2"></i>
+                            <p class="text-muted small">No lectures found.</p>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -88,16 +86,61 @@
 </div>
 
 <div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-5">
-            <div class="spinner-border text-primary mb-4" role="status" style="width: 3rem; height: 3rem;"></div>
-            <h4 class="fw-bold">AI Professor is Reading...</h4>
-            <p class="text-muted">This takes a moment for photos and scanned PDFs. Please don't close this window.</p>
+    <div class="modal-dialog modal-dialog-centered mx-auto" style="max-width: 85%;">
+        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4 tg-card">
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 2.5rem; height: 2.5rem;"></div>
+            <h5 class="fw-bold text-tg">Professor is Reading...</h5>
+            <p class="text-muted small mb-0">I'm scanning your notes for concepts. Please hold on!</p>
         </div>
     </div>
 </div>
 
+<style>
+    /* Custom Telegram Theming */
+    .text-tg { color: var(--tg-text) !important; }
+    .tg-card { background-color: var(--tg-card) !important; }
+    
+    .tg-file-input {
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        border: none !important;
+        border-radius: 12px;
+        font-size: 0.9rem;
+    }
+
+    body.tg-dark .tg-file-input {
+        background-color: var(--tg-bg) !important;
+        color: white !important;
+    }
+
+    .icon-box-tg {
+        width: 42px;
+        height: 42px;
+        background: rgba(120, 120, 120, 0.1);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .border-bottom-tg { border-bottom: 1px solid rgba(120, 120, 120, 0.1) !important; }
+
+    .btn-primary-soft {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        border: none;
+    }
+    
+    body.tg-dark .btn-primary-soft {
+        background: rgba(100, 181, 246, 0.15);
+        color: #64b5f6;
+    }
+
+    .letter-spacing-1 { letter-spacing: 0.5px; }
+</style>
+
 <script>
+    // Logic for Image Previews and Loading State
     const fileInput = document.getElementById('fileInput');
     const previewContainer = document.getElementById('previewContainer');
     const uploadForm = document.getElementById('uploadForm');
@@ -117,8 +160,7 @@
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         const div = document.createElement('div');
-                        div.className = 'position-relative';
-                        div.innerHTML = `<img src="${e.target.result}" class="rounded border border-2 border-white" style="width: 55px; height: 55px; object-fit: cover;">`;
+                        div.innerHTML = `<img src="${e.target.result}" class="rounded border border-1 border-white" style="width: 45px; height: 45px; object-fit: cover;">`;
                         previewContainer.appendChild(div);
                     }
                     reader.readAsDataURL(file);
@@ -132,16 +174,4 @@
         loadingModal.show();
     };
 </script>
-
-<style>
-    body { background-color: #f8f9fa; }
-    .hover-shadow:hover {
-        background-color: #eef2ff !important;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-    }
-    .transition-all { transition: all 0.3s ease; }
-    .list-group::-webkit-scrollbar { width: 5px; }
-    .list-group::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 10px; }
-</style>
 {% endblock %}

@@ -3,87 +3,95 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid py-3 px-2 px-md-4">
     
-    <div class="row g-3 mb-5">
-        <div class="col-6 col-md-3">
-            <a href="{{ url_for('quiz.quiz_selection') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-all hover-lift">
-                <div class="card-body text-center p-4">
-                    <div class="bg-warning bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                        <i class="bi bi-pencil-square text-warning fs-3"></i>
+    <div class="row g-2 mb-4">
+        <div class="col-4">
+            <a href="{{ url_for('quiz.quiz_selection') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none h-100 tg-card-hover">
+                <div class="card-body text-center p-3">
+                    <div class="icon-circle bg-warning-subtle mb-2">
+                        <i class="bi bi-pencil-square text-warning fs-4"></i>
                     </div>
-                    <h6 class="fw-bold text-dark mb-1">CBT Quiz</h6>
-                    <small class="text-muted">Test yourself</small>
+                    <div class="fw-bold small text-tg">Quiz</div>
                 </div>
             </a>
         </div>
-        <div class="col-6 col-md-3">
-            <a href="{{ url_for('library.library_index') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-all hover-lift">
-                <div class="card-body text-center p-4">
-                    <div class="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                        <i class="bi bi-folder-fill text-info fs-3"></i>
+        <div class="col-4">
+            <a href="{{ url_for('library.library_index') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none h-100 tg-card-hover">
+                <div class="card-body text-center p-3">
+                    <div class="icon-circle bg-info-subtle mb-2">
+                        <i class="bi bi-folder-fill text-info fs-4"></i>
                     </div>
-                    <h6 class="fw-bold text-dark mb-1">Library</hs6>
-                    <small class="text-muted">All documents</small>
+                    <div class="fw-bold small text-tg">Library</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-4">
+            <a href="{{ url_for('classroom.classroom_selection') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none h-100 tg-card-hover">
+                <div class="card-body text-center p-3">
+                    <div class="icon-circle bg-primary-subtle mb-2">
+                        <i class="bi bi-mortarboard-fill text-primary fs-4"></i>
+                    </div>
+                    <div class="fw-bold small text-tg">Class</div>
                 </div>
             </a>
         </div>
 
         <div class="col-6 col-md-3">
-            <a href="{{ url_for('classroom.classroom_selection') }}" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-all hover-lift">
-                <div class="card-body text-center p-4">
-                    <div class="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                        <i class="bi bi-folder-fill text-info fs-3"></i>
-                    </div>
-                    <h6 class="fw-bold text-dark mb-1">Class mode</hs6>
-                    <small class="text-muted">Let Stud Teach you</small>
-                </div>
-            </a>
+    <a href="{{ url_for('chatproff.professor_office') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm rounded-4 p-3 text-center h-100 transition-all">
+            <i class="bi bi-person-badge text-primary fs-2"></i>
+            <div class="fw-bold text-dark mt-2">Office Hours</div>
+            <small class="text-muted">Chat with AI</small>
         </div>
-        </div>
+    </a>
+</div>
+    </div>
 
     <div class="row g-4">
         <div class="col-12 col-xl-5">
-            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
-                <div class="card-header border-0 bg-white pt-4 px-4 text-center">
-                    <div class="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-2">
-                        <i class="bi bi-mic-fill text-primary fs-4"></i>
-                    </div>
-                    <h5 class="fw-bold mb-0">Study Guide Generator</h5>
-                    <p class="small text-muted">Convert Audio or PDF into structured notes</p>
-                </div>
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-primary bg-opacity-10 p-2 rounded-3 me-3">
+                            <i class="bi bi-stars text-primary fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-tg">Study Generator</h5>
+                            <small class="text-muted">Audio, PDF or Text</small>
+                        </div>
+                    </div>
+
                     <form id="uploadForm" enctype="multipart/form-data">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary">STUDY TITLE</label>
+                            <label class="form-label small fw-bold text-uppercase opacity-75">Topic Title</label>
                             <input type="text" name="custom_title" id="customTitle" 
-                                   class="form-control form-control-lg border-2 bg-light-subtle rounded-3" 
+                                   class="form-control form-control-lg tg-input" 
                                    placeholder="e.g. GST 101 Lecture">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary">UPLOAD AUDIO/DOC</label>
-                            <div class="upload-area p-4 border-dashed rounded-4 text-center bg-light transition-all" id="drop-zone">
+                            <div class="upload-area p-4 border-dashed rounded-4 text-center transition-all" id="drop-zone">
                                 <i class="bi bi-cloud-arrow-up fs-1 text-primary"></i>
-                                <p class="mb-2 mt-2 fw-medium">Click to select <span class="text-primary">File</span></p>
-                                <small class="text-muted">MP3</small>
+                                <p class="mb-1 mt-2 fw-bold text-tg">Tap to Upload</p>
+                                <small class="text-muted d-block">Supports PDF, MP3, Docx</small>
                                 <input type="file" name="lecture_file" id="lectureFile" class="d-none" accept=".mp3,.wav,.m4a,.pdf,.docx,.txt" required>
                                 <div id="file-chosen" class="mt-2 fw-bold text-success d-none"></div>
                             </div>
                         </div>
                         
                         <div class="mb-4">
-                            <label class="form-label small fw-bold text-secondary">EXPORT AS</label>
-                            <div class="d-flex gap-2">
+                            <label class="form-label small fw-bold text-uppercase opacity-75">Format</label>
+                            <div class="btn-group w-100 shadow-none">
                                 <input type="radio" class="btn-check" name="export_format" id="fmt_pdf" value="pdf" checked>
-                                <label class="btn btn-outline-secondary w-50 py-2 rounded-3" for="fmt_pdf">PDF</label>
+                                <label class="btn btn-outline-primary py-2 rounded-start-pill" for="fmt_pdf">PDF</label>
                                 
                                 <input type="radio" class="btn-check" name="export_format" id="fmt_docx" value="docx">
-                                <label class="btn btn-outline-secondary w-50 py-2 rounded-3" for="fmt_docx">Word</label>
+                                <label class="btn btn-outline-primary py-2 rounded-end-pill" for="fmt_docx">Word</label>
                             </div>
                         </div>
 
-                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm py-3 rounded-pill">
+                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 btn-lg fw-bold py-3 rounded-pill shadow-lg">
                             ✨ Start AI Processing
                         </button>
                     </form>
@@ -92,41 +100,46 @@
 
             <div id="log-container" class="d-none animate-slide-up">
                 <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="card-header bg-dark py-3">
-                        <span class="text-white-50 font-monospace small">>> SYSTEM_CORE_LOG</span>
+                    <div class="card-header bg-dark py-2 px-3 d-flex align-items-center">
+                        <div class="terminal-dot bg-danger me-1"></div>
+                        <div class="terminal-dot bg-warning me-1"></div>
+                        <div class="terminal-dot bg-success me-3"></div>
+                        <span class="text-white-50 font-monospace small">AI_PROCESSING_LOG</span>
                     </div>
-                    <div id="terminal-body" class="card-body font-monospace text-success overflow-auto p-4" style="height: 250px; background: #0d1117; font-size: 0.8rem;">
+                    <div id="terminal-body" class="card-body font-monospace overflow-auto p-3" style="height: 200px; background: #0d1117; font-size: 0.85rem;">
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-xl-7">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4 text-dark">Recent Study Guides</h5>
+                    <h6 class="fw-bold mb-4 text-tg text-uppercase letter-spacing-1">Recent Study Guides</h6>
                     {% if lectures %}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <tbody>
-                                {% for lecture in lectures %}
-                                <tr>
-                                    <td>
-                                        <div class="fw-bold text-dark">{{ lecture.title }}</div>
-                                        <small class="text-muted">{{ lecture.timestamp.strftime('%d %b') }}</small>
-                                    </td>
-                                    <td class="text-end">
-                                        <a href="{{ url_for('processor.download_lecture', lecture_id=lecture.id) }}" class="btn btn-light btn-sm rounded-pill shadow-sm">
-                                            <i class="bi bi-download"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="list-group list-group-flush">
+                        {% for lecture in lectures %}
+                        <div class="list-group-item bg-transparent border-0 px-0 py-3 d-flex align-items-center justify-content-between border-bottom-tg">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 p-2 rounded-3 me-3 text-primary">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-tg text-truncate" style="max-width: 180px;">{{ lecture.title }}</div>
+                                    <small class="text-muted">{{ lecture.timestamp.strftime('%d %b') }}</small>
+                                </div>
+                            </div>
+                            <a href="{{ url_for('processor.download_lecture', lecture_id=lecture.id) }}" class="btn btn-light-tg btn-sm rounded-circle p-2">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </div>
+                        {% endfor %}
                     </div>
                     {% else %}
-                    <p class="text-center text-muted py-5">No files processed yet.</p>
+                    <div class="text-center py-5">
+                        <i class="bi bi-cloud-slash fs-1 text-muted mb-3 d-block"></i>
+                        <p class="text-muted">No files processed yet.</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -134,10 +147,8 @@
     </div>
 </div>
 
-
-
 <style>
-    .border-dashed { border: 2px dashed #dee2e6 !important; transition: all 0.3s; }
+    border-dashed { border: 2px dashed #dee2e6 !important; transition: all 0.3s; }
     .upload-area:hover { border-color: #6366f1 !important; cursor: pointer; background: #f8f9ff !important; }
     .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
     .animate-slide-up { animation: slideUp 0.5s ease-out; }
@@ -145,7 +156,38 @@
     .transition-all { transition: all 0.3s ease; }
     #terminal-body::-webkit-scrollbar { width: 6px; }
     #terminal-body::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+    /* Telegram Specific Styling */
+    .icon-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+    .bg-warning-subtle { background: rgba(255, 193, 7, 0.15); }
+    .bg-info-subtle { background: rgba(13, 202, 240, 0.15); }
+    .bg-primary-subtle { background: rgba(13, 110, 253, 0.15); }
+    
+    .tg-card-hover:active { transform: scale(0.95); transition: 0.2s; }
+    
+    .text-tg { color: var(--tg-text) !important; }
+    .btn-light-tg { background: rgba(120, 120, 120, 0.1); border: none; color: var(--tg-text); }
+    
+    .border-dashed { border: 2px dashed var(--tg-hint) !important; }
+    .upload-area:active { background: rgba(13, 110, 253, 0.05); }
+    
+    .tg-input { 
+        background-color: var(--tg-bg) !important; 
+        color: var(--tg-text) !important; 
+        border: 1px solid var(--tg-hint) !important;
+        border-radius: 12px;
+    }
+    
+    .border-bottom-tg { border-bottom: 1px solid rgba(120, 120, 120, 0.1) !important; }
+    .terminal-dot { width: 8px; height: 8px; border-radius: 50%; }
+    
+    .letter-spacing-1 { letter-spacing: 1px; }
+
+    /* Hide standard nav timer for cleaner look if desired */
+    #timer-container { font-size: 0.8rem; }
 </style>
+
+
+
 
 
 <script>

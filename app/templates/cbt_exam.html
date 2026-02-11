@@ -1,21 +1,24 @@
 {% extends "base.html" %}
+
+{% block title %}Exam Center{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
+<div class="container py-3">
     <div class="row justify-content-center">
-        <div class="col-md-9">
+        <div class="col-12 col-md-9">
             
-            <div class="progress mb-3" style="height: 8px;">
+            <div class="progress mb-3 shadow-sm" style="height: 6px; background: rgba(120,120,120,0.1); border-radius: 10px;">
                 <div id="exam-progress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm">
-                <div>
-                    <h5 class="fw-bold mb-0 text-truncate" style="max-width: 250px;">{{ lecture.title }}</h5>
+            <div class="d-flex justify-content-between align-items-center mb-4 tg-header-card p-3 rounded-4 shadow-sm border">
+                <div class="overflow-hidden">
+                    <h6 class="fw-bold mb-0 text-truncate text-tg">{{ lecture.title }}</h6>
                     <small class="text-muted">Question <span id="current-idx">1</span> of {{ count }}</small>
                 </div>
                 <div class="text-end">
                     <div class="h4 fw-bold text-danger mb-0" id="timer">00:00</div>
-                    <small class="text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Time Remaining</small>
+                    <small class="text-uppercase fw-bold text-muted" style="font-size: 0.6rem;">Time Left</small>
                 </div>
             </div>
 
@@ -23,39 +26,43 @@
                 <input type="hidden" name="lecture_id" value="{{ lecture.id }}">
                 
                 {% for item in quiz %}
-    {% set q_idx = loop.index0 %}
-    
-    <div class="question-card shadow-sm p-4 bg-white rounded-4 mb-4" id="q-{{ q_idx }}" style="{% if not loop.first %}display:none;{% endif %}">
-        <h5 class="mb-4 fw-bold">{{ q_idx + 1 }}. {{ item.q }}</h5>
-        
-        {% if item.type == 'objective' %}
-            {% for opt in item.options %}
-            <div class="form-check mb-3 p-3 border rounded-3 hover-shadow">
-                <input class="form-check-input" 
-                       type="radio" 
-                       name="ans-{{ q_idx }}" 
-                       id="opt-{{ loop.index0 }}-{{ q_idx }}" 
-                       value="{{ opt }}">
-                <label class="form-check-label w-100" for="opt-{{ loop.index0 }}-{{ q_idx }}">
-                    {{ opt }}
-                </label>
-            </div>
-            {% endfor %}
-        {% else %}
-            <textarea name="ans-{{ q_idx }}" class="form-control" rows="4" placeholder="Type your answer here..."></textarea>
-        {% endif %}
-    </div>
-{% endfor %}
+                {% set q_idx = loop.index0 %}
+                
+                <div class="question-card animate-fade-in" id="q-{{ q_idx }}" style="{% if not loop.first %}display:none;{% endif %}">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 tg-q-card">
+                        <h5 class="mb-4 fw-bold lh-base text-tg">{{ q_idx + 1 }}. {{ item.q }}</h5>
+                        
+                        {% if item.type == 'objective' %}
+                            <div class="options-list">
+                                {% for opt in item.options %}
+                                <div class="option-item mb-3">
+                                    <input class="btn-check" 
+                                           type="radio" 
+                                           name="ans-{{ q_idx }}" 
+                                           id="opt-{{ loop.index0 }}-{{ q_idx }}" 
+                                           value="{{ opt }}">
+                                    <label class="btn btn-outline-tg-option w-100 text-start p-3 border-2 rounded-3" for="opt-{{ loop.index0 }}-{{ q_idx }}">
+                                        {{ opt }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <textarea name="ans-{{ q_idx }}" class="form-control tg-input p-3" rows="6" placeholder="Write your answer clearly..."></textarea>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
 
-                <div class="d-flex justify-content-between mt-4 pb-5">
-                    <button type="button" class="btn btn-secondary px-4 rounded-pill shadow-sm" id="prevBtn" onclick="changeQ(-1)" disabled>
-                        <i class="bi bi-chevron-left"></i> Previous
+                <div class="d-flex justify-content-between gap-3 mt-4 pb-5">
+                    <button type="button" class="btn btn-secondary-tg flex-fill py-3 rounded-pill fw-bold" id="prevBtn" onclick="changeQ(-1)" disabled>
+                        <i class="bi bi-arrow-left me-1"></i> Back
                     </button>
-                    <button type="button" class="btn btn-primary px-4 rounded-pill shadow-sm" id="nextBtn" onclick="changeQ(1)">
-                        Next <i class="bi bi-chevron-right"></i>
+                    <button type="button" class="btn btn-primary flex-fill py-3 rounded-pill fw-bold shadow" id="nextBtn" onclick="changeQ(1)">
+                        Next <i class="bi bi-arrow-right ms-1"></i>
                     </button>
-                    <button type="submit" class="btn btn-success px-5 rounded-pill shadow-sm d-none" id="submitBtn">
-                        Submit Examination <i class="bi bi-check-all"></i>
+                    <button type="submit" class="btn btn-success flex-fill py-3 rounded-pill fw-bold shadow d-none" id="submitBtn">
+                        Submit <i class="bi bi-check-circle ms-1"></i>
                     </button>
                 </div>
             </form>
@@ -63,7 +70,74 @@
     </div>
 </div>
 
+<style>
+    /* Telegram Theme Integration */
+    .tg-header-card {
+        background-color: var(--tg-card) !important;
+        border-color: rgba(120, 120, 120, 0.1) !important;
+    }
 
+    .tg-q-card {
+        background-color: var(--tg-card) !important;
+    }
+
+    .text-tg {
+        color: var(--tg-text) !important;
+    }
+
+    /* Option Button Styles */
+    .btn-outline-tg-option {
+        border-color: rgba(120, 120, 120, 0.2);
+        color: var(--tg-text);
+        transition: all 0.2s ease;
+        background: transparent;
+    }
+
+    .btn-check:checked + .btn-outline-tg-option {
+        background-color: var(--tg-link) !important;
+        border-color: var(--tg-link) !important;
+        color: #fff !important;
+        transform: scale(1.02);
+    }
+
+    .btn-outline-tg-option:hover {
+        background-color: rgba(120, 120, 120, 0.05);
+    }
+
+    /* Input focus for dark mode */
+    .tg-input {
+        background-color: var(--tg-bg) !important;
+        color: var(--tg-text) !important;
+        border: 1px solid var(--tg-hint) !important;
+    }
+
+    .btn-secondary-tg {
+        background: rgba(120, 120, 120, 0.1);
+        color: var(--tg-text);
+        border: none;
+    }
+
+    /* Animations */
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse-timer {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    .timer-critical {
+        animation: pulse-timer 0.8s infinite;
+        color: #ff4d4d !important;
+    }
+</style>
 
 <script>
     let currentQ = 0;
@@ -84,6 +158,7 @@
         document.getElementById('prevBtn').disabled = (currentQ === 0);
         
         updateProgress();
+        window.scrollTo(0,0);
 
         if (currentQ === totalQ - 1) {
             document.getElementById('nextBtn').classList.add('d-none');
@@ -94,9 +169,6 @@
         }
     }
 
-    // Initialize progress
-    updateProgress();
-
     // Timer Logic
     const timerDisplay = document.getElementById('timer');
     const countdown = setInterval(() => {
@@ -105,29 +177,20 @@
         timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         
         if (timeLeft <= 60) {
-            timerDisplay.classList.add('text-danger');
-            timerDisplay.style.animation = "pulse 1s infinite";
+            timerDisplay.classList.add('timer-critical');
         }
         
         if (timeLeft <= 0) {
             clearInterval(countdown);
-            alert("Time is up! Your exam will be submitted automatically.");
+            if(window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.showAlert("Time is up! Submitting automatically.");
+            }
             document.getElementById('quizForm').submit();
         }
         timeLeft--;
     }, 1000);
-</script>
 
-<style>
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-    }
-    .hover-shadow:hover {
-        background-color: #f8f9ff;
-        border-color: #0d6efd !important;
-        cursor: pointer;
-    }
-</style>
+    // Initial call
+    updateProgress();
+</script>
 {% endblock %}
