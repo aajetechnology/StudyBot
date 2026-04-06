@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Quiz Results{% endblock %}
+
+{% block content %}
+<div class="container py-4 px-3 px-md-5 fade-in">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8 text-center">
+            
+            <div class="glass-card p-5 rounded-4 mb-5 slide-up">
+                <h5 class="fw-bold tracking-wider opacity-60 text-uppercase mb-5">Examination Performance</h5>
+                
+                <div class="position-relative d-inline-block mb-5">
+                    {% set percent = (quiz.score / quiz.total_questions * 100)|int if quiz.total_questions > 0 else 0 %}
+                    <div class="bg-primary bg-opacity-10 p-5 rounded-circle shadow-inner" style="width: 250px; height: 250px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                        <h1 class="display-1 fw-bold mb-0 text-gradient">
+                            {{ percent }}%
+                        </h1>
+                        <p class="text-muted fw-bold mb-0">{{ quiz.score }} / {{ quiz.total_questions }} Correct</p>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="glass-card p-4 rounded-4 border-success border-opacity-20 cursor-pointer transition-base" 
+                             data-bs-toggle="collapse" data-bs-target="#correctDetails">
+                            <h2 class="mb-0 text-success fw-bold">{{ quiz.score }}</h2>
+                            <small class="text-success text-uppercase fw-bold tracking-tighter" style="font-size: 0.65rem;">Passed Items</small>
+                            <i class="bi bi-chevron-down d-block mt-2 opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="glass-card p-4 rounded-4 border-danger border-opacity-20 cursor-pointer transition-base" 
+                             data-bs-toggle="collapse" data-bs-target="#incorrectDetails">
+                            <h2 class="mb-0 text-danger fw-bold">{{ quiz.total_questions - quiz.score }}</h2>
+                            <small class="text-danger text-uppercase fw-bold tracking-tighter" style="font-size: 0.65rem;">Failed Items</small>
+                            <i class="bi bi-chevron-down d-block mt-2 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Corrections -->
+            <div class="collapse mb-4" id="incorrectDetails" data-bs-parent=".row">
+                <div class="glass-card border-0 rounded-4 text-start overflow-hidden">
+                    <div class="bg-danger bg-opacity-80 text-white fw-bold p-4 text-uppercase tracking-wider">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Areas for Improvement
+                    </div>
+                    <div class="list-group list-group-flush bg-transparent">
+                        {% for item in quiz_details if not item.is_correct %}
+                        <div class="list-group-item bg-transparent p-4 border-white border-opacity-10">
+                            <p class="fw-bold mb-3 small">Q: {{ item.question }}</p>
+                            <div class="p-3 rounded-3 bg-danger bg-opacity-10 text-danger small mb-2 border border-danger border-opacity-10">
+                                <i class="bi bi-x-lg me-2"></i> <strong>Your Answer:</strong> {{ item.user_answer if item.user_answer else "Skipped" }}
+                            </div>
+                            <div class="p-3 rounded-3 bg-success bg-opacity-10 text-success small border border-success border-opacity-10">
+                                <i class="bi bi-check-lg me-2"></i> <strong>Correct Key:</strong> {{ item.correct_answer }}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="p-5 text-center text-muted opacity-50">Masterfully done! No errors found.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="collapse mb-4" id="correctDetails" data-bs-parent=".row">
+                <div class="glass-card border-0 rounded-4 text-start overflow-hidden">
+                    <div class="bg-success bg-opacity-80 text-white fw-bold p-4 text-uppercase tracking-wider">
+                        <i class="bi bi-patch-check-fill me-2"></i> Strong Knowledge Areas
+                    </div>
+                    <div class="list-group list-group-flush bg-transparent">
+                        {% for item in quiz_details if item.is_correct %}
+                        <div class="list-group-item bg-transparent p-4 border-white border-opacity-10">
+                            <p class="fw-bold mb-2 small">Q: {{ item.question }}</p>
+                            <span class="text-success small fw-medium"><i class="bi bi-check2-all me-2"></i> {{ item.correct_answer }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Insight Card -->
+            <div class="glass-card p-5 rounded-4 text-start mb-5 slide-up" style="animation-delay: 0.2s;">
+                <h6 class="fw-bold text-primary text-uppercase tracking-wider mb-4">
+                    <i class="bi bi-cpu-fill me-2"></i> Professor's Assessment
+                </h6>
+                <div class="opacity-80 small lh-lg mb-5 mb-md-0">
+                    {{ quiz.feedback | replace('\n', '<br>') | safe }}
+                </div>
+                
+                <div class="mt-5 d-grid d-md-flex gap-3">
+                    <a href="{{ url_for('quiz.quiz_selection') }}" class="btn btn-premium px-5 py-3 fw-bold flex-grow-1">
+                        Start New Exam
+                    </a>
+                    <a href="{{ url_for('library.library_index') }}" class="btn btn-premium-outline px-5 py-3 fw-bold flex-grow-1">
+                        Go to Library
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // Ensure clicking a box collapses the other one
+    document.addEventListener('DOMContentLoaded', function() {
+        const correctCollapse = document.getElementById('correctDetails');
+        const incorrectCollapse = document.getElementById('incorrectDetails');
+        
+        correctCollapse.addEventListener('show.bs.collapse', function () {
+            bootstrap.Collapse.getOrCreateInstance(incorrectCollapse).hide();
+        });
+        
+        incorrectCollapse.addEventListener('show.bs.collapse', function () {
+            bootstrap.Collapse.getOrCreateInstance(correctCollapse).hide();
+        });
+    });
+</script>
+{% endblock %}

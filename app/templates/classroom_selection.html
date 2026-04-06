@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Classroom Selection{% endblock %}
+
+{% block content %}
+<div class="container py-4 px-3 px-md-5 fade-in">
+    <div class="text-center mb-5 pt-2">
+        <div class="bg-primary bg-opacity-10 d-inline-block p-4 rounded-circle mb-3 slide-up">
+            <i class="bi bi-mortarboard-fill text-primary display-5"></i>
+        </div>
+        <h2 class="fw-bold fs-1 slide-up" style="animation-delay: 0.1s;">AI Classroom</h2>
+        <p class="text-muted mx-auto slide-up" style="max-width: 450px; animation-delay: 0.2s;">
+            Upload your course materials and let our AI Professor build a custom interactive learning experience for you.
+        </p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <!-- New Lecture Card -->
+        <div class="col-12 col-lg-5 order-1 order-lg-1 slide-up" style="animation-delay: 0.3s;">
+            <div class="glass-card p-4 p-md-5 rounded-4 h-100 border-0 bg-gradient-premium text-white">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-white bg-opacity-20 p-3 rounded-3 me-3">
+                        <i class="bi bi-plus-circle fs-3"></i>
+                    </div>
+                    <h4 class="fw-bold mb-0">Start New Course</h4>
+                </div>
+                <p class="mb-5 opacity-80 pe-lg-4">Upload PDFs, Word docs, or images of your notes to begin the AI analysis.</p>
+                
+                <form action="{{ url_for('classroom.start_class') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                    <div class="mb-4">
+                        <input type="file" name="doc_file" id="fileInput"
+                               class="form-control form-control-lg bg-white bg-opacity-10 border-0 text-white shadow-none rounded-3" 
+                               multiple 
+                               accept=".pdf, .docx, .txt, image/*" required>
+                    </div>
+
+                    <div id="previewContainer" class="d-flex flex-wrap gap-2 mb-4 d-none bg-black bg-opacity-20 p-3 rounded-3 border border-white border-opacity-10">
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-light btn-lg rounded-pill fw-bold py-3 shadow-lg border-0" id="submitBtn">
+                            <i class="bi bi-stars me-2 text-primary"></i>Analyze Material
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- History Column -->
+        <div class="col-12 col-lg-7 order-2 order-lg-2 slide-up" style="animation-delay: 0.4s;">
+            <div class="glass-card p-4 p-md-5 rounded-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-5">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-clock-history me-2 text-primary"></i>Your Classroom History
+                    </h5>
+                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3">{{ lectures|length }} Active</span>
+                </div>
+                
+                <div class="list-group list-group-flush gap-3">
+                    {% for lecture in lectures %}
+                    <div class="list-group-item bg-transparent border-0 glass-card p-3 rounded-4 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center overflow-hidden">
+                            <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3 text-primary">
+                                {% if lecture.transcript and ("image" in lecture.transcript|lower or "transcription" in lecture.transcript|lower) %}
+                                    <i class="bi bi-camera-fill fs-4"></i>
+                                {% else %}
+                                    <i class="bi bi-file-earmark-text-fill fs-4 text-danger"></i>
+                                {% endif %}
+                            </div>
+                            <div class="text-truncate pe-3">
+                                <div class="fw-bold mb-0 text-truncate" style="max-width: 250px;">{{ lecture.title }}</div>
+                                <small class="text-muted">{{ lecture.timestamp.strftime('%d %b, %Y') }}</small>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('classroom.init_class', lecture_id=lecture.id) }}" 
+                           class="btn btn-primary-outline rounded-pill px-4 fw-bold">
+                            Open
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 opacity-50">
+                        <i class="bi bi-folder2-open display-1 d-block mb-3"></i>
+                        <h6 class="fw-bold">No classrooms yet</h6>
+                        <p class="small mb-0">Start by scanning your notes!</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered mx-auto" style="max-width: 85%;">
+        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4 tg-card">
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 2.5rem; height: 2.5rem;"></div>
+            <h5 class="fw-bold text-tg">Professor is Reading...</h5>
+            <p class="text-muted small mb-0">I'm scanning your notes for concepts. Please hold on!</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-tg { color: var(--tg-text) !important; }
+    .glass-card { background-color: var(--tg-card) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important; }
+    .max-w-320 { max-width: 320px; }
+    .max-w-160 { max-width: 160px; }
+    .w-85 { max-width: 85%; }
+    
+    .tg-file-input {
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        border: 1px solid rgba(0,0,0,0.1) !important;
+        border-radius: 12px;
+        padding: 0.75rem;
+    }
+
+    body.tg-dark .tg-file-input {
+        background-color: var(--tg-bg) !important;
+        color: white !important;
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+
+    .icon-box-tg {
+        width: 42px;
+        height: 42px;
+        background: rgba(120, 120, 120, 0.1);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .border-bottom-tg { border-bottom: 1px solid rgba(120, 120, 120, 0.1) !important; }
+
+    .btn-primary-soft {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        border: none;
+    }
+    
+    body.tg-dark .btn-primary-soft {
+        background: rgba(100, 181, 246, 0.15);
+        color: #64b5f6;
+    }
+
+    .letter-spacing-1 { letter-spacing: 0.5px; }
+</style>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const uploadForm = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+
+    // Drag and Drop support
+    const dropZone = fileInput.closest('.glass-card');
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('border-white', 'border-opacity-50');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('border-white', 'border-opacity-50');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', e => {
+        const dt = e.dataTransfer;
+        fileInput.files = dt.files;
+        // Trigger change event manually to update preview
+        fileInput.dispatchEvent(new Event('change'));
+    }, false);
+
+    fileInput.addEventListener('change', function() {
+        previewContainer.innerHTML = '';
+        previewContainer.classList.add('d-none');
+
+        if (this.files) {
+            const imageFiles = Array.from(this.files).filter(file => file.type.startsWith('image/'));
+            
+            if (imageFiles.length > 0) {
+                previewContainer.classList.remove('d-none');
+                imageFiles.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const div = document.createElement('div');
+                        div.innerHTML = `<img src="${e.target.result}" class="rounded border border-1 border-white" style="width: 45px; height: 45px; object-fit: cover;">`;
+                        previewContainer.appendChild(div);
+                    }
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+    });
+
+    uploadForm.onsubmit = function() {
+        submitBtn.disabled = true;
+        loadingModal.show();
+    };
+</script>
+{% endblock %}

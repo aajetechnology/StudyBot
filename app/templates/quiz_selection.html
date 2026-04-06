@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Preparation Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4 px-3 px-md-5 fade-in">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+            <div class="text-center mb-5 pt-2 slide-up">
+                <div class="bg-primary bg-opacity-10 d-inline-block p-4 rounded-circle mb-3">
+                    <i class="bi bi-journal-check text-primary display-5"></i>
+                </div>
+                <h2 class="fw-bold">Quiz Center</h2>
+                <p class="text-muted mx-auto" style="max-width: 450px;">
+                    Test your knowledge and track your progress with AI-generated examinations.
+                </p>
+            </div>
+
+            <div class="glass-card p-4 p-md-5 rounded-4 slide-up" style="animation-delay: 0.1s;">
+                <!-- Source Toggle -->
+                <div class="btn-group w-100 mb-5 p-1 glass-effect rounded-pill" role="group">
+                    <input type="radio" class="btn-check" name="source_toggle" id="mode_library" checked onclick="toggleMode('library')">
+                    <label class="btn btn-premium-outline border-0 rounded-pill py-2" for="mode_library">
+                        <i class="bi bi-collection me-2"></i> From Library
+                    </label>
+
+                    <input type="radio" class="btn-check" name="source_toggle" id="mode_upload" onclick="toggleMode('upload')">
+                    <label class="btn btn-premium-outline border-0 rounded-pill py-2" for="mode_upload">
+                        <i class="bi bi-cloud-upload me-2"></i> New Upload
+                    </label>
+                </div>
+
+                <form action="{{ url_for('quiz.start_quiz') }}" method="POST" enctype="multipart/form-data" id="quizForm">
+                    <!-- Library Section -->
+                    <div id="section_library" class="mb-5">
+                        <label class="form-label small fw-bold text-uppercase tracking-wider opacity-60">Select Material</label>
+                        <select name="lecture_id" id="lecture_select" class="form-select form-input-modern py-3">
+                            <option value="" disabled selected>Choose a saved lecture...</option>
+                            {% for lecture in lectures %}
+                            <option value="{{ lecture.id }}">{{ lecture.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Upload Section -->
+                    <div id="section_upload" class="mb-5 d-none">
+                        <label class="form-label small fw-bold text-uppercase tracking-wider opacity-60">Upload Source</label>
+                        <input type="file" name="doc_file" id="file_input" 
+                               class="form-control form-input-modern py-2" 
+                               multiple accept=".pdf,.jpg,.jpeg,.png" disabled>
+                        <div class="mt-2 text-muted small opacity-75">
+                            <i class="bi bi-info-circle me-1"></i> Supports PDFs and high-quality photos of notes.
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-5">
+                        <!-- Question Count -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-uppercase tracking-wider opacity-60">Exam Length</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for count in [10, 20, 30, 40, 50] %}
+                                <div class="flex-fill">
+                                    <input type="radio" class="btn-check" name="count" id="btn{{count}}" value="{{count}}" {% if count == 10 %}checked{% endif %}>
+                                    <label class="btn btn-premium-outline w-100 py-2 fw-bold" for="btn{{count}}">{{count}} Qs</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <!-- Format Selection -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-uppercase tracking-wider opacity-60">Results Format</label>
+                            <select name="format" class="form-select form-input-modern py-2">
+                                <option value="pdf" selected>Downloadable PDF</option>
+                                <option value="docx">Word Document</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="glass-card bg-primary bg-opacity-10 border-0 p-4 rounded-4 mb-5 d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-20 p-2 rounded-3 me-4 text-primary">
+                            <i class="bi bi-stars fs-4"></i>
+                        </div>
+                        <p class="small mb-0 fw-medium opacity-90">
+                            Our AI will generate unique questions based specifically on your selected material.
+                        </p>
+                    </div>
+
+                    <button type="submit" class="btn btn-premium btn-lg w-100 fw-bold rounded-pill py-3 shadow-lg" id="submitBtn">
+                         <span id="btnText">Initialize Examination</span>
+                         <span id="btnSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleMode(mode) {
+    const libSec = document.getElementById('section_library');
+    const upSec = document.getElementById('section_upload');
+    const libInput = document.getElementById('lecture_select');
+    const upInput = document.getElementById('file_input');
+
+    if (mode === 'library') {
+        libSec.classList.remove('d-none');
+        upSec.classList.add('d-none');
+        libInput.disabled = false;
+        upInput.disabled = true;
+    } else {
+        libSec.classList.add('d-none');
+        upSec.classList.remove('d-none');
+        libInput.disabled = true;
+        upInput.disabled = false;
+    }
+}
+
+document.getElementById('quizForm').onsubmit = function() {
+    const btn = document.getElementById('submitBtn');
+    const text = document.getElementById('btnText');
+    const spinner = document.getElementById('btnSpinner');
+    
+    btn.disabled = true;
+    btn.classList.add('disabled');
+    text.innerText = "Processing Material...";
+    spinner.classList.remove('d-none');
+};
+</script>
+{% endblock %}

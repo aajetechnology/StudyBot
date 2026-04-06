@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center align-items-center py-5" style="min-height: 80vh;">
+        <div class="col-11 col-sm-10 col-md-7 col-lg-5">
+            <div class="glass-card p-4 p-md-5 rounded-4 fade-in">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold text-gradient">Join StudBot</h2>
+                    <p class="text-muted small">Join thousands of advanced students</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-uppercase tracking-wider opacity-60">Full Name</label>
+                        <input type="text" name="username" class="form-control form-input-modern shadow-none" id="regUser" placeholder="John Doe" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-uppercase tracking-wider opacity-60">Email Address</label>
+                        <input type="email" name="email" class="form-control form-input-modern shadow-none" id="regEmail" placeholder="name@example.com" required>
+                    </div>
+                    <div class="mb-5">
+                        <label class="form-label small fw-bold text-uppercase tracking-wider opacity-60">Secure Password</label>
+                        <input type="password" name="password" class="form-control form-input-modern shadow-none" id="regPass" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-premium w-100 py-3 shadow-lg rounded-pill fs-6">Create Account</button>
+                </form>
+                
+                <div class="text-center mt-5">
+                    <span class="text-muted small">Already have an account?</span>
+                    <a href="{{ url_for('auth.login') }}" class="text-decoration-none small fw-bold text-primary">Login Now</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,269 @@
+/* 
+ * StudyBot Professional Design System 
+ * A slick, modern, and professional look for the educational assistant.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    /* Color Palette - Deep Indigo & Slate */
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --secondary: #a855f7;
+    --accent: #10b981;
+    
+    /* Light Mode Tokens */
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-nav: rgba(255, 255, 255, 0.8);
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: rgba(226, 232, 240, 0.8);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    
+    /* Telegram Integration */
+    --tg-bg: var(--bg-main);
+    --tg-text: var(--text-main);
+    --tg-hint: var(--text-muted);
+    --tg-card: var(--bg-card);
+}
+
+/* Dark Mode / Telegram Dark Overrides */
+[data-bs-theme="dark"], body.tg-dark {
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --bg-nav: rgba(15, 23, 42, 0.8);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: rgba(51, 65, 85, 0.8);
+}
+
+body {
+    background-color: var(--bg-main) !important;
+    color: var(--text-main) !important;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+}
+
+/* Typography Enhancements */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text-main) !important;
+}
+
+/* Utility: Glassmorphism */
+.glass-effect {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background-color: var(--bg-nav);
+    border: 1px solid var(--border-color);
+}
+
+.glass-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Utility: Premium Gradients */
+.bg-gradient-premium {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Component: Buttons */
+.btn-premium {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: white !important;
+    border: none;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    filter: brightness(1.1);
+}
+
+.btn-premium:active {
+    transform: translateY(0);
+}
+
+.btn-premium-outline {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary) !important;
+    font-weight: 600;
+    padding: 0.7rem 1.5rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.btn-premium-outline:hover {
+    background: var(--primary);
+    color: var(--accent) !important;
+}
+
+/* Component: Inputs */
+.form-input-modern {
+    background-color: var(--bg-main) !important;
+    border: 1.5px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    padding: 0.75rem 1rem !important;
+    color: var(--text-main) !important;
+    transition: all 0.3s ease !important;
+}
+
+.form-input-modern:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Component: Navbar */
+.navbar-floating {
+    position: sticky;
+    top: 1rem;
+    z-index: 1000;
+    margin: 0 1rem 2rem 1rem;
+    border-radius: 16px;
+    padding: 0.75rem 1.5rem;
+}
+
+.nav-link:hover, .hover-green:hover {
+    color: var(--accent) !important;
+    transition: color 0.2s ease;
+}
+
+/* Component: Terminal Log */
+.terminal-window {
+    background: #0f172a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.terminal-header {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.terminal-body {
+    padding: 1rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    color: #e2e8f0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Animations */
+.fade-in { animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.slide-up { animation: slideUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; opacity: 0; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { 
+    from { opacity: 0; transform: translateY(30px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+/* Study Specific Animations */
+.cursor-blink {
+    display: inline-block;
+    width: 8px;
+    height: 1.2em;
+    background: var(--primary);
+    animation: blink 1s infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+.pulse-icon { animation: pulse 2s infinite; }
+@keyframes pulse { 
+    0% { transform: scale(1); } 
+    50% { transform: scale(1.15); opacity: 0.8; } 
+    100% { transform: scale(1); } 
+}
+
+/* Helper Classes */
+.transition-base { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.tracking-wider { letter-spacing: 0.05em; }
+.tracking-tighter { letter-spacing: -0.02em; }
+.opacity-60 { opacity: 0.6; }
+.opacity-80 { opacity: 0.8; }
+
+/* Mobile Bottom Navigation */
+.mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    height: 70px;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-nav-link {
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.mobile-nav-link.active {
+    color: var(--primary);
+}
+
+.mobile-nav-link:hover {
+    color: var(--accent);
+}
+
+/* Responsive Overrides */
+@media (max-width: 768px) {
+    body {
+        padding-bottom: 80px; /* Space for bottom nav */
+    }
+    
+    .navbar-floating {
+        top: 0;
+        margin: 0;
+        border-radius: 0;
+        padding: 0.5rem 1rem;
+    }
+    
+    h1 { font-size: 1.75rem !important; }
+    h2 { font-size: 1.5rem !important; }
+    .glass-card { padding: 1rem !important; }
+}
+
+@media (max-width: 480px) {
+    .container { padding-left: 1rem; padding-right: 1rem; }
+    .btn-premium, .btn-premium-outline { padding: 0.6rem 1rem; font-size: 0.9rem; }
+}

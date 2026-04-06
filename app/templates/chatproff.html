@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Office Hours{% endblock %}
+
+{% block content %}
+<div class="container py-4 h-100 d-flex flex-column fade-in" style="max-height: calc(100vh - 120px);">
+    <div class="d-flex align-items-center mb-4 px-3 slide-up">
+        <div class="position-relative">
+            <div class="bg-primary rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 54px; height: 54px;">
+                <i class="bi bi-person-workspace text-white fs-3"></i>
+            </div>
+            <span class="position-absolute bottom-0 end-0 badge border border-3 border-white rounded-circle bg-success p-2">
+                <span class="visually-hidden">Online</span>
+            </span>
+        </div>
+        <div class="ms-4">
+            <h4 class="fw-bold mb-1">Professor StudAI</h4>
+            <div class="d-flex align-items-center">
+                <span class="small text-success fw-bold text-uppercase tracking-tighter" style="font-size: 0.7rem;">Active • Office Hours</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Window -->
+    <div id="chat-window" class="flex-grow-1 overflow-auto p-4 mb-4 glass-card rounded-4 shadow-inner slide-up" style="animation-delay: 0.1s; display: flex; flex-direction: column; gap: 20px;">
+        <div class="bubble professor glass-effect border-0 rounded-4 p-3 shadow-sm">
+            <div class="fw-bold text-primary small mb-2 text-uppercase tracking-wider">Professor's Opening</div>
+            Hello! I'm your Professor. Based on your recent notes about <strong>"{{ lecture.title if lecture else 'your studies' }}"</strong>, how can I help you today?
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="slide-up" style="animation-delay: 0.2s;">
+        <div class="glass-card p-2 rounded-pill shadow-lg d-flex align-items-center border-0">
+            <input type="text" id="student-msg" class="form-control border-0 bg-transparent shadow-none px-4 py-3 fw-medium" placeholder="Ask a question about your material..." autocomplete="off">
+            <button class="btn btn-premium rounded-circle d-flex align-items-center justify-content-center shadow-lg transition-base" style="width: 50px; height: 50px; flex-shrink: 0;" onclick="sendMessage()">
+                <i class="bi bi-send-fill fs-5"></i>
+            </button>
+        </div>
+        <p class="text-center text-muted small mt-3 opacity-50">AI responses may vary. Cross-reference with your study materials.</p>
+    </div>
+</div>
+
+
+<script>
+function sendMessage() {
+    const input = document.getElementById('student-msg');
+    const chatWindow = document.getElementById('chat-window');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    // Append Student Bubble
+    const studentBubble = document.createElement('div');
+    studentBubble.className = 'bubble student glass-card border-0 rounded-4 p-3 shadow-sm align-self-end text-white bg-primary bg-gradient-premium';
+    studentBubble.innerText = msg;
+    chatWindow.appendChild(studentBubble);
+    
+    input.value = '';
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    // Loading indicator
+    const loadingId = 'loading-' + Date.now();
+    const loadingBubble = document.createElement('div');
+    loadingBubble.id = loadingId;
+    loadingBubble.className = 'bubble professor glass-effect border-0 rounded-4 p-3 shadow-sm align-self-start';
+    loadingBubble.innerHTML = '<span class="spinner-grow spinner-grow-sm me-2"></span> Thinking...';
+    chatWindow.appendChild(loadingBubble);
+
+    fetch("{{ url_for('chatproff.chat_professor') }}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: msg})
+    })
+    .then(res => res.json())
+    .then(data => {
+        const bubble = document.getElementById(loadingId);
+        bubble.innerHTML = `<div class="fw-bold text-primary small mb-2 text-uppercase tracking-wider">Professor's Insight</div>${data.answer}`;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    })
+    .catch(() => {
+        const bubble = document.getElementById(loadingId);
+        if (bubble) bubble.innerText = "The Professor is currently offline.";
+    });
+}
+
+// Allow "Enter" key to send
+document.getElementById('student-msg').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+});
+</script>
+{% endblock %}
