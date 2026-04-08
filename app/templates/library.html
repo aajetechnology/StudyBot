@@ -70,7 +70,7 @@
                                     <small class="text-muted">{{ lecture.timestamp.strftime('%d %b, %Y') }}</small>
                                 </div>
                             </div>
-                            <a href="{{ url_for('processor.download_lecture', lecture_id=lecture.id) }}" class="btn btn-premium-outline rounded-circle p-2 shadow-sm">
+                            <a href="javascript:void(0)" onclick="downloadStudyFile('{{ url_for('processor.download_lecture', lecture_id=lecture.id) }}')" class="btn btn-premium-outline rounded-circle p-2 shadow-sm">
                                 <i class="bi bi-download"></i>
                             </a>
                         </div>

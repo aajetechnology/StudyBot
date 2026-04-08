@@ -193,7 +193,7 @@
                             </div>
                         </div>
                         <div class="d-flex gap-2">
-                            <a href="{{ url_for('processor.download_lecture', lecture_id=lecture.id) }}"
+                            <a href="javascript:void(0)" onclick="downloadStudyFile('{{ url_for('processor.download_lecture', lecture_id=lecture.id) }}')"
                                 class="btn btn-light bg-light bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center p-2"
                                 title="Download" style="width: 40px; height: 40px;">
                                 <i class="bi bi-download"></i>

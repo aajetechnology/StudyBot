@@ -143,5 +143,6 @@ def download_lecture(lecture_id):
     full_path = os.path.join(root_dir, 'output', filename)
 
     if os.path.exists(full_path):
-        return send_file(full_path, as_attachment=True, download_name=f"{lecture.title}.{lecture.output_format}")
+        mimetype = 'application/pdf' if lecture.output_format == 'pdf' else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        return send_file(full_path, as_attachment=True, download_name=f"{lecture.title}.{lecture.output_format}", mimetype=mimetype)
     return "File not found", 404
