@@ -17,6 +17,11 @@ class User(db.Model, UserMixin):
 
 
     is_admin = db.Column(db.Boolean, default=False)
+    
+    # SaaS Monetization
+    is_pro = db.Column(db.Boolean, default=False)
+    credits_remaining = db.Column(db.Integer, default=3)
+    last_credit_reset = db.Column(db.DateTime, default=datetime.utcnow)
 
     lectures = db.relationship('Lecture', backref='owner', lazy=True)
 

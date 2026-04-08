@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_user, logout_user, current_user
-from flask_bcrypt import Bcrypt
 from app.models import db, User
+from app import bcrypt
 
 import hmac
 import hashlib
@@ -10,19 +10,17 @@ import urllib.parse
 import os
 
 auth_bp = Blueprint('auth', __name__)
-bcrypt = Bcrypt()
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
-
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
-        email =request.form.get('email')
+        email = request.form.get('email')
         password = request.form.get('password')
 
         user_exists = User.query.filter_by(email=email).first()
         if user_exists:
-            flash('Email alreadyregistered . ', 'danger')
+            flash('Email already registered.', 'danger')
             return redirect(url_for('auth.register'))
         
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -52,7 +50,6 @@ def login():
             flash('Login Unsuccessful. Check email and password', 'danger')
             
     return render_template('login.html')
-
 
 @auth_bp.route('/telegram-login', methods=['POST'])
 def telegram_login():
@@ -95,11 +92,8 @@ def verify_telegram_data(init_data, bot_token):
     secret_key = hmac.new("WebAppData".encode(), bot_token.encode(), hashlib.sha256).digest()
     h = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
     return h == hash_val
+
 @auth_bp.route('/logout')
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
-
-
-
-

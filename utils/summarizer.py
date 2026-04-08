@@ -23,38 +23,55 @@ class StudyAI:
             yield "Content too brief...", "The provided content was too brief."
             return
 
-        truncated_transcript = transcript[:15000] 
-        full_response = []
+        # NEW: Process in chunks if transcript is long
+        chunk_size = 15000
+        overlap = 1000
+        text_chunks = []
+        for i in range(0, len(transcript), chunk_size - overlap):
+            text_chunks.append(transcript[i:i + chunk_size])
 
+        # Step 1: Create a combined map if there are multiple chunks
+        if len(text_chunks) > 1:
+            intermediate_summaries = []
+            for idx, chunk in enumerate(text_chunks[:10]): # Process up to 10 chunks (~150k chars)
+                prompt = f"Summarize this part of the lecture in detail for notes. Part {idx+1}:\n\n{chunk}"
+                try:
+                    res = self.client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role": "user", "content": prompt}])
+                    intermediate_summaries.append(res.choices[0].message.content)
+                except: continue
+            final_context = "\n\n".join(intermediate_summaries)
+        else:
+            final_context = transcript
+
+        # Step 2: Final Academic Synthesis
+        system_prompt = """
+        You are a world-class academic scribe. Convert the provided transcript into Professional Lecture Notes.
+        Use the Cornell Note-Taking framework:
+        1. HEADER: Topic, Date, and 3-5 'Key Learning Objectives'.
+        2. STRUCTURED NOTES: Full main concepts with a clear hierarchy (use Headings and Subheadings).
+        3. VOCABULARY: Definitions for technical jargon or key terms mentioned.
+        4. SUMMARY: A 2-paragraph concluding synthesis.
+        Use Markdown (bolding, bullet points) to make it exam-ready.
+        """
+        
+        full_response = []
         try:
-            logger.info("Starting Streaming AI generation...")
             completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a professional academic tutor..."},
-                    {"role": "user", "content": f"Summarize this:\n\n{truncated_transcript}"}
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Create Professional Study Notes from this context:\n\n{final_context}"}
                 ],
-                temperature=0.5,
-                max_tokens=2048,
+                temperature=0.4,
                 stream=True
             )
-
             for chunk in completion:
                 content = chunk.choices[0].delta.content
                 if content:
                     full_response.append(content)
                     yield content, None
-
-            # CRITICAL: If the AI returned nothing, don't leave it as None
-            final_summary = "".join(full_response)
-            if not final_summary:
-                final_summary = "AI was unable to generate a summary for this transcript."
-            
-            yield None, final_summary
-
+            yield None, "".join(full_response)
         except Exception as e:
-            logger.error(f"Groq API Critical Error: {str(e)}")
-            # Even on error, return a string so the DB save doesn't crash
-            yield None, f"Summary Generation Error: {str(e)}"
+            yield None, f"Error: {str(e)}"
 
 ai_assistant = StudyAI()

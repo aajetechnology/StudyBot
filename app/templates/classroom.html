@@ -67,6 +67,17 @@
                         <span id="cursor" class="cursor-blink"></span>
                     </div>
 
+                    <!-- ELI5 (Simplify) Box -->
+                    <div id="eli5-container" class="d-none animate__animated animate__fadeInUp mb-4">
+                        <div class="glass-card p-4 rounded-4 border-start border-4 border-accent shadow-sm">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-baby text-accent fs-4 me-2"></i>
+                                <span class="fw-bold text-accent small text-uppercase tracking-wider">Simplified for You</span>
+                            </div>
+                            <div id="eli5-content" class="text-muted small lh-lg"></div>
+                        </div>
+                    </div>
+
                     <div class="d-flex flex-wrap gap-3">
                         {% if step < total_steps %}
                         <a href="{{ url_for('classroom.next_module') }}" class="btn btn-premium px-5 py-3 fw-bold flex-grow-1 flex-md-grow-0">
@@ -80,6 +91,10 @@
                         
                         <button class="btn btn-premium-outline px-4 py-3 fw-bold flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#questionModal">
                             <i class="bi bi-chat-dots me-2"></i>Ask Professor
+                        </button>
+
+                        <button id="eli5-btn" onclick="explainLikeIm5()" class="btn btn-premium-outline px-4 py-3 fw-bold flex-grow-1 flex-md-grow-0 border-accent text-accent hover-accent-bg">
+                            <i class="bi bi-magic me-2"></i>Simplify (ELI5)
                         </button>
 
                         <a href="{{ url_for('quiz.run_exam', lecture_id=lecture_id, count=5) }}" class="btn btn-premium-outline px-4 py-3 fw-bold flex-grow-1 flex-md-grow-0">
@@ -114,7 +129,6 @@
     </div>
 </div>
 
-
 <script>
 // --- 1. LECTURE STREAMING ---
 const streamDiv = document.getElementById('stream-content');
@@ -126,20 +140,16 @@ const eventSource = new EventSource("{{ url_for('classroom.stream_module_content
 eventSource.onmessage = function(event) {
     try {
         const data = JSON.parse(event.data);
-        if (data.msg === "____FINISHED____") {
+        if (data.message === "____FINISHED____" || data.msg === "____FINISHED____") {
             eventSource.close();
             if(cursor) cursor.remove();
             return;
         }
         
-        if (data.msg.startsWith(">>>")) {
-            // Internal system logs
-            console.log(data.msg);
-        } else {
+        if (data.msg && !data.msg.startsWith(">>>")) {
             fullMarkdown += data.msg;
             streamDiv.innerHTML = marked.parse(fullMarkdown);
             
-            // Auto-scroll only if user is already near the bottom
             const offset = 150;
             if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - offset) {
                 window.scrollTo(0, document.body.scrollHeight);
@@ -169,8 +179,44 @@ document.getElementById('tutorForm').onsubmit = async (e) => {
         responseDiv.innerHTML = `<span class="text-danger small">Connection error.</span>`;
     } finally {
         btn.disabled = false;
-        btn.innerHTML = 'Ask Professor';
+        btn.innerHTML = 'Send Message to Professor';
     }
 };
+
+// --- 3. ELI5 LOGIC ---
+async function explainLikeIm5() {
+    const btn = document.getElementById('eli5-btn');
+    const container = document.getElementById('eli5-container');
+    const content = document.getElementById('eli5-content');
+    
+    if (!container.classList.contains('d-none')) {
+        container.classList.add('d-none');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Simplifying...';
+
+    try {
+        const formData = new FormData();
+        formData.append('module_title', "{{ module_title }}");
+        formData.append('question', "Explain the core takeaway of this module like I am 5 years old. Use a very simple analogy and keep it short.");
+
+        const res = await fetch("{{ url_for('classroom.ask_tutor') }}", {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        container.classList.remove('d-none');
+        content.innerHTML = marked.parse(data.answer);
+        container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) {
+        console.error("ELI5 Error:", e);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-magic me-2"></i>Simplify (ELI5)';
+    }
+}
 </script>
 {% endblock %}

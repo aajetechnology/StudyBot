@@ -152,6 +152,11 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0.75rem 1.5rem;
 }
 
+.navbar-floating .nav-link {
+    color: var(--primary) !important;
+    font-weight: 500;
+}
+
 .nav-link:hover, .hover-green:hover {
     color: var(--accent) !important;
     transition: color 0.2s ease;
@@ -266,4 +271,45 @@ h1, h2, h3, h4, h5, h6 {
 @media (max-width: 480px) {
     .container { padding-left: 1rem; padding-right: 1rem; }
     .btn-premium, .btn-premium-outline { padding: 0.6rem 1rem; font-size: 0.9rem; }
+}
+
+/* Premium UI Utilities */
+.shadow-accent { box-shadow: 0 4px 15px rgba(0, 230, 118, 0.4); }
+.btn-premium-outline {
+    background: transparent;
+    border: 1px solid rgba(0, 230, 118, 0.3);
+    color: var(--accent);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-premium-outline:hover, .btn-check:checked + .btn-premium-outline {
+    background: rgba(0, 230, 118, 0.1);
+    border-color: var(--accent);
+    color: var(--accent) !important;
+    transform: translateY(-2px);
+}
+
+.badge.bg-accent {
+    background-color: var(--accent) !important;
+    color: #1a1a1a !important;
+    font-weight: 700;
+}
+
+/* ELI5 Styles */
+.hover-accent-bg:hover {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+}
+
+#eli5-container {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.text-accent {
+    color: var(--accent) !important;
+}
+
+.border-accent {
+    border-color: var(--accent) !important;
 }

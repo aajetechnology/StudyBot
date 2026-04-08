@@ -2,22 +2,18 @@ import os
 import json
 import base64
 import io
-import pdfplumber
-from pypdf import PdfReader
-from docx import Document
 from datetime import datetime, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, current_app, flash, session, jsonify
 from flask_login import login_required, current_user
 from rapidfuzz import fuzz
 from groq import Groq
-
 from app.models import db, Lecture, Quiz  
 from utils.summarizer import ai_assistant
+from utils.text_extractor import extract_text_from_file
+from utils.billing import can_process, spend_credit
 
 quiz_bp = Blueprint('quiz', __name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
-from utils.text_extractor import extract_text_from_file
 
 # --- ROUTES ---
 
@@ -27,30 +23,24 @@ def quiz_selection():
     lectures = Lecture.query.filter_by(user_id=current_user.id).order_by(Lecture.timestamp.desc()).all()
     return render_template('quiz_selection.html', lectures=lectures)
 
-
-
-
 @quiz_bp.route('/start-quiz', methods=['GET', 'POST'])
 @login_required
 def start_quiz():
+    if not can_process(current_user):
+        flash("Out of Credits! You have used your 3 daily lectures/quizzes. Please upgrade to Pro!", "danger")
+        return redirect(url_for('quiz.quiz_selection'))
+    
     if request.method == 'GET':
         return redirect(url_for('quiz.quiz_selection'))
 
-    # --- CAPTURE FORM DATA ---
-    # Default to 10 questions and 'pdf' if not provided
     num_questions = request.form.get('count', 10)
     export_format = request.form.get('format', 'pdf')
     lecture_id = request.form.get('lecture_id')
 
-    # --- MODE 1: FROM LIBRARY ---
     if lecture_id:
-        current_app.logger.info(f"User {current_user.id} starting quiz from existing lecture: {lecture_id}")
-        # Pass the count to the run-exam route
         return redirect(url_for('quiz.run_exam', lecture_id=lecture_id, count=num_questions))
 
-    # --- MODE 2: NEW UPLOAD ---
     files = request.files.getlist('doc_file')
-    
     if not files or all(f.filename == '' for f in files):
         flash("Please upload a document/photo or select from your library!", "warning")
         return redirect(url_for('quiz.quiz_selection'))
@@ -58,23 +48,20 @@ def start_quiz():
     combined_text = ""
     for file in files:
         if not file or file.filename == '': continue
-        
         try:
             combined_text += extract_text_from_file(file) + "\n"
         except Exception as e:
             current_app.logger.error(f"Extraction Error for {file.filename}: {e}")
 
-    # Final Save Logic
     if len(combined_text.strip()) < 20:
         flash("The AI couldn't read those notes. Try a clearer file!", "danger")
         return redirect(url_for('quiz.quiz_selection'))
 
-    # Create the Lecture record including the captured format and a default summary
     new_lecture = Lecture(
         title=files[0].filename[:50],
         transcript=combined_text,
-        summary="Automated notes from document upload.", # Solves NotNullViolation
-        output_format=export_format, # Saves the user's choice (pdf/docx)
+        summary="Automated notes from document upload.",
+        output_format=export_format,
         user_id=current_user.id,
         timestamp=datetime.now(timezone.utc)
     )
@@ -82,31 +69,32 @@ def start_quiz():
     try:
         db.session.add(new_lecture)
         db.session.commit()
-        # Direct the user straight to the exam with the chosen question count
+        spend_credit(current_user) # Deduct credit for doc processing
         return redirect(url_for('quiz.run_exam', lecture_id=new_lecture.id, count=num_questions))
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"DB Error: {str(e)}")
-        flash("Database error occurred while saving your notes.", "danger")
+        flash("Database error occurred.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
-
-
 
 @quiz_bp.route('/run-exam/<int:lecture_id>/<int:count>')
 @login_required
 def run_exam(lecture_id, count):
+    # Charge credit if starting quiz from library (not just created)
+    # Actually for simplicity, we charge 1 credit whenever a Quiz is generated via AI.
+    if not can_process(current_user):
+        flash("Out of Credits! You have used your 3 daily lectures/quizzes. Please upgrade to Pro!", "danger")
+        return redirect(url_for('quiz.quiz_selection'))
     lecture = db.session.get(Lecture, lecture_id)
     if not lecture:
         flash("Lecture not found.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
 
-    # Use content if transcript is missing (for PDF/Photo uploads)
     raw_text = lecture.transcript if lecture.transcript else lecture.content
     if not raw_text:
         flash("No content found to generate a quiz.", "warning")
         return redirect(url_for('quiz.quiz_selection'))
 
-    # Determine timer duration
     math_keywords = ['=', '+', '/', '*', 'calculate', 'solve', 'formula', 'x', 'y']
     is_calc = any(word in raw_text.lower() for word in math_keywords)
     total_seconds = count * (180 if is_calc else 90)
@@ -118,7 +106,7 @@ def run_exam(lecture_id, count):
     {{
         "questions": [
             {{"id": 1, "type": "objective", "q": "Question text", "options": ["Choice1", "Choice2", "Choice3", "Choice4"], "ans": "Choice1"}},
-            {{"id": 2, "type": "theory", "q": "Theory question", "keywords": ["word1", "word2"]}}
+            {{"id": 2, "type": "theory", "q": "Theory question", "model_answer": "Complete correct explanation here"}}
         ]
     }}
     CRITICAL: For 'objective' questions, 'ans' must be the FULL TEXT of the correct option.
@@ -132,6 +120,7 @@ def run_exam(lecture_id, count):
             response_format={"type": "json_object"}
         )
         quiz_data = json.loads(completion.choices[0].message.content)
+        spend_credit(current_user) # Deduct credit for AI generation
         session['current_quiz'] = quiz_data['questions']
         
         return render_template('cbt_exam.html', 
@@ -141,7 +130,7 @@ def run_exam(lecture_id, count):
                                count=count)
     except Exception as e:
         current_app.logger.error(f"Quiz AI error: {str(e)}")
-        flash("AI failed to generate quiz. Please try again.", "danger")
+        flash("AI failed to generate quiz.", "danger")
         return redirect(url_for('quiz.quiz_selection'))
 
 @quiz_bp.route('/submit-quiz', methods=['POST'])
@@ -164,20 +153,29 @@ def submit_quiz():
         user_answers[str(i)] = user_ans
 
         if q['type'] == 'objective':
-            if fuzz.token_set_ratio(user_ans, correct_ans) > 90:
+            is_correct = fuzz.token_set_ratio(user_ans, correct_ans) > 90
+            if is_correct:
                 score += 1
             else:
                 failed_qs.append(q['q'])
+            user_answers[str(i)] = user_ans
         else:
-            keywords = [k.lower() for k in q.get('keywords', [])]
-            found = [w for w in keywords if w in user_ans]
-            if len(keywords) > 0 and len(found) >= (len(keywords) / 2):
+            # AI-driven logical grading
+            model_ans = q.get('model_answer', '')
+            is_correct = grade_theory_answer(q['q'], user_ans, model_ans)
+            
+            if is_correct:
                 score += 1
             else:
                 failed_qs.append(q['q'])
+            
+            # Store the result so we don't have to re-grade later
+            user_answers[str(i)] = {
+                "ans": user_ans,
+                "is_correct": is_correct
+            }
         
-    # Generate Feedback
-    advice_prompt = f"Student scored {score}/{len(quiz_questions)}. Failed topics: {failed_qs[:2]}. Give a 2-sentence tip and a YouTube search term."
+    advice_prompt = f"Student scored {score}/{len(quiz_questions)}. Failed topics: {failed_qs[:2]}. Give a 2-sentence tip."
     try:
         fb = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -185,7 +183,7 @@ def submit_quiz():
         )
         tutor_advice = fb.choices[0].message.content
     except:
-        tutor_advice = "Good job! Keep studying your notes."
+        tutor_advice = "Good job! Keep studying."
 
     new_result = Quiz(
         lecture_id=lecture_id,
@@ -219,10 +217,13 @@ def view_results(quiz_id):
             is_correct = fuzz.token_set_ratio(u_ans.lower(), str(q.get('ans', "")).lower()) > 90
             correct_display = q.get('ans')
         else:
-            keywords = [k.lower() for k in q.get('keywords', [])]
-            found = [w for w in keywords if w in u_ans.lower()]
-            is_correct = len(found) >= (len(keywords)/2) and len(keywords) > 0
-            correct_display = "Keywords: " + ", ".join(q.get('keywords', []))
+            saved_data = user_answers.get(str(i), {})
+            if isinstance(saved_data, dict):
+                is_correct = saved_data.get('is_correct', False)
+                u_ans = saved_data.get('ans', "No Answer")
+            else:
+                is_correct = False # Fallback for old records
+            correct_display = q.get('model_answer', "N/A")
         
         quiz_details.append({
             'question': q['q'],
@@ -232,3 +233,26 @@ def view_results(quiz_id):
         })
 
     return render_template('quiz_results.html', quiz=quiz, quiz_details=quiz_details)
+
+
+def grade_theory_answer(question, student_answer, model_answer):
+    """Evaluates if a student's answer is logically correct compared to the source."""
+    if not student_answer: return False
+    
+    prompt = f"""
+    Evaluate this student's answer for a quiz.
+    Question: {question}
+    Reference Fact: {model_answer}
+    Student's Answer: {student_answer}
+    Rule: If the student's answer is logically correct and expresses the same meaning as the reference (even in different words), mark it as 'CORRECT'. If it is wrong or unrelated, mark it as 'INCORRECT'.
+    
+    Return ONLY 'CORRECT' or 'INCORRECT'.
+    """
+    try:
+        res = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return "CORRECT" in res.choices[0].message.content.upper()
+    except:
+        return False

@@ -90,11 +90,11 @@
 </div>
 
 <div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered mx-auto" style="max-width: 85%;">
-        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4 tg-card">
-            <div class="spinner-border text-primary mb-3" role="status" style="width: 2.5rem; height: 2.5rem;"></div>
-            <h5 class="fw-bold text-tg">Professor is Reading...</h5>
-            <p class="text-muted small mb-0">I'm scanning your notes for concepts. Please hold on!</p>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content glass-card border-0 rounded-4 text-center p-5">
+            <div class="spinner-border text-primary border-4 mb-4" role="status" style="width: 4rem; height: 4rem;"></div>
+            <h4 class="fw-bold">Professor is Reading...</h4>
+            <p class="text-muted mb-0">I'm scanning your notes for concepts. Please hold on!</p>
         </div>
     </div>
 </div>
@@ -178,7 +178,6 @@
     dropZone.addEventListener('drop', e => {
         const dt = e.dataTransfer;
         fileInput.files = dt.files;
-        // Trigger change event manually to update preview
         fileInput.dispatchEvent(new Event('change'));
     }, false);
 

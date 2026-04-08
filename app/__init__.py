@@ -8,9 +8,13 @@ from app.routes.library import library_bp
 from app.routes.classroom import classroom_bp
 
 
+from flask_bcrypt import Bcrypt
+
 # Initialize extensions globally
 migrate = Migrate()
 login_manager = LoginManager()
+bcrypt = Bcrypt()
+
 login_manager.login_view = 'auth.login'
 login_manager.login_message_category = 'info'
 
@@ -25,6 +29,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    bcrypt.init_app(app)
 
     # Register Blueprints
     from app.routes.auth import auth_bp

@@ -81,7 +81,6 @@
     </div>
 </div>
 
-
 <script>
     let currentQ = 0;
     const totalQ = {{ count }};
@@ -119,15 +118,8 @@
         let secs = timeLeft % 60;
         timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         
-        if (timeLeft <= 60) {
-            timerDisplay.classList.add('timer-critical');
-        }
-        
         if (timeLeft <= 0) {
             clearInterval(countdown);
-            if(window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.showAlert("Time is up! Submitting automatically.");
-            }
             document.getElementById('quizForm').submit();
         }
         timeLeft--;
